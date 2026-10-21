@@ -1,13 +1,13 @@
-# Lab 6: Container Insights, managed Prometheus, and Managed Grafana
+# Lab 7: Container Insights, managed Prometheus, and Managed Grafana
 
-[Home](../../README.md) | [Previous: Lab 5](../05-gitops/README.md) | [Final cleanup](../../docs/cleanup.md)
+[Home](../../README.md) | [Previous: Lab 6](../06-gitops/README.md) | [Final cleanup](../../docs/cleanup.md)
 
 **Goal:** Collect container logs and Kubernetes metrics, find a workload in
 Container Insights, and explore its metrics in Azure Managed Grafana.
 
 **Time:** 60-90 minutes, including provisioning and ingestion delays.
 **Prerequisites:** the existing upgraded Lab 2 cluster, setup completed, and
-permission to create resources and assign Azure roles. Labs 3-5 can remain
+permission to create resources and assign Azure roles. Labs 3-6 can remain
 running but are not required for monitoring. No new cluster is needed.
 
 ## What you are building
@@ -142,7 +142,7 @@ Azure resource alone is not a Grafana sign-in role.
 The second assignment lets **Grafana's managed identity** query Prometheus; it
 is separate from the human user's Grafana role. Managed Grafana uses Entra
 authentication out of the box: no new app registration, client secret, or
-Lab 5 Argo CD SSO configuration is needed.
+Lab 6 Argo CD SSO configuration is needed.
 
 The Azure Monitor workspace also creates a managed resource group named like
 `MA_<workspace>_<region>_managed` containing its default ingestion resources.
@@ -195,7 +195,7 @@ previously unmonitored Terraform cluster.
 ### Keep Terraform consistent with the cluster
 
 The root Terraform configuration has one optional monitoring input. It remains
-`null` throughout Labs 2-5, so earlier labs do not incur monitoring charges.
+`null` throughout Labs 2-6, so earlier labs do not incur monitoring charges.
 Set it now to preserve the add-on settings you just enabled.
 
 <details>
@@ -354,7 +354,7 @@ Editor role, but no custom dashboard is required to complete the lab.
 
 Scale only the dedicated monitoring deployment. Watch Kubernetes first, then
 the managed Prometheus query, then the extra pod's log lines in Container
-Insights. Do not scale the GitOps-managed deployment or Lab 4's disk-backed app.
+Insights. Do not scale the GitOps-managed deployment or Lab 5's disk-backed app.
 
 <details>
 <summary>Solution: see replicas and pod logs change, then restore the baseline</summary>
@@ -430,7 +430,7 @@ the failing collection/query stage.
 ## Finish and costs
 
 Deleting the sample or closing Grafana does **not** stop managed monitoring
-charges. Follow [Final cleanup](../../docs/cleanup.md), starting with the Lab 6
+charges. Follow [Final cleanup](../../docs/cleanup.md), starting with the Lab 7
 section: disable collection before deleting workspaces, remove the remaining
 Container Insights rule, and delete the lab monitoring resource group.
 

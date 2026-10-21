@@ -34,7 +34,7 @@ Stop port-forwards in their terminals with `Ctrl+C`.
 
 ## 2. Stop monitoring and remove the monitoring resources
 
-For Lab 6, inspect the collection rules associated with **this cluster** before
+For Lab 7, inspect the collection rules associated with **this cluster** before
 disabling collection. Container Insights leaves its rule behind when its
 association is removed, so record that specific rule's ID first:
 
@@ -78,7 +78,7 @@ removes the now-unassociated Container Insights rule. Do not delete rules used
 by another cluster, or manually delete the Azure Monitor workspace's default
 ingestion resources.
 
-Remove the `log_analytics_workspace_id` line added in Lab 6 from
+Remove the `log_analytics_workspace_id` line added in Lab 7 from
 `infrastructure/terraform.tfvars` (or set it to `null`) so Terraform no longer
 expects the add-ons to be enabled. Keep all other inputs and state.
 
@@ -98,7 +98,7 @@ Closing a dashboard or deleting the sample alone would not stop these charges.
 
 ## 3. Remove the GitOps application before its controller
 
-For Lab 5:
+For Lab 6:
 
 ```bash
 kubectl -n argocd delete application aksintro-demo
@@ -115,7 +115,7 @@ Azure manage its lifecycle correctly. Review the extension-deletion prompt.
 
 ## 4. Remove persistent storage while the CSI driver is running
 
-For Lab 4, first copy out any file you want to keep:
+For Lab 5, first copy out any file you want to keep:
 
 ```bash
 kubectl -n storage-demo exec deployment/persistent-web -- \
@@ -134,17 +134,17 @@ kubectl -n storage-demo delete deployment persistent-web --cascade=foreground --
 kubectl -n storage-demo delete pvc web-content
 kubectl wait --for=delete "pv/$LAB_PV" --timeout=600s
 kubectl delete namespace storage-demo
-kubectl delete namespace identity-demo
 ```
 
 Wait for PV deletion before deleting AKS; do not remove storage finalizers to
 force completion. If a volume remains, inspect events, reclaim policy, and the
 Azure Disk before continuing.
 
-For the Blob Storage exercise, optionally download the sample file before
-deleting the storage account:
+For Lab 4's Blob Storage exercise, remove its pod and optionally download the
+sample file before deleting the storage account:
 
 ```bash
+kubectl delete namespace identity-demo
 source .workshop/storage.env
 az storage account show --resource-group "$RESOURCE_GROUP" \
   --name "$STORAGE_ACCOUNT" --query '{name:name,id:id}' -o table
@@ -209,7 +209,7 @@ storage account. After deleting it, remove the application's managed identity:
 az identity delete --resource-group "$RESOURCE_GROUP" --name "aksintro-${LAB_ID}-blob"
 ```
 
-For **Lab 5**, remove its separate managed identity after extension deletion:
+For **Lab 6**, remove its separate managed identity after extension deletion:
 
 ```bash
 az identity delete --resource-group "$RESOURCE_GROUP" --name "aksintro-${LAB_ID}-argocd"
@@ -219,7 +219,7 @@ Federated credentials on each managed identity are removed with that identity.
 
 ## 7. Destroy Terraform-managed infrastructure
 
-For Labs 2-6:
+For Labs 2-7:
 
 ```bash
 terraform -chdir=infrastructure plan -destroy -out=destroy.tfplan
@@ -237,7 +237,7 @@ destroy plan. Do not work around failures by deleting the state file.
 
 ## 8. Delete Entra objects separately
 
-For Lab 5, only if **you created** the app registration and group:
+For Lab 6, only if **you created** the app registration and group:
 
 ```bash
 source .workshop/entra.env

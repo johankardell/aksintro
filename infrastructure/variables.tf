@@ -36,7 +36,7 @@ variable "kubernetes_version" {
 }
 
 variable "log_analytics_workspace_id" {
-  description = "Lab 6 only: Log Analytics workspace ID. Null leaves both monitoring add-ons disabled."
+  description = "Lab 7 only: Log Analytics workspace ID. Null leaves both monitoring add-ons disabled."
   type        = string
   default     = null
 }

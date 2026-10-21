@@ -1,6 +1,6 @@
 # Getting started with Azure Kubernetes Service
 
-Six hands-on labs for people who are new to Azure and Kubernetes. Start with a
+Seven hands-on labs for people who are new to Azure and Kubernetes. Start with a
 small cluster in the Azure portal, then build a reusable environment with
 Terraform, Application Gateway for Containers, identities, storage, GitOps, and
 managed monitoring.
@@ -18,9 +18,10 @@ Complete [Setup and prerequisites](docs/00-setup.md) before starting.
 | [1. A cluster in the portal](labs/01-portal/README.md) | Create AKS, connect, deploy a web application, and use a public Service | 45-60 minutes |
 | [2. Terraform, a VNet, and an upgrade](labs/02-terraform/README.md) | Create reproducible infrastructure, understand networking, and upgrade Kubernetes | 90-120 minutes |
 | [3. Application Gateway for Containers](labs/03-agc/README.md) | Install ALB Controller and route HTTP traffic using Gateway API | 60-90 minutes |
-| [4. Managed identities and persistent volumes](labs/04-identity-storage/README.md) | Read Azure Blob Storage without a password and preserve data across pod replacement | 75-90 minutes |
-| [5. Managed Argo CD and Entra ID](labs/05-gitops/README.md) | Sign in with Entra ID, deploy from Git, and reconcile changes and drift | 90-120 minutes |
-| [6. Managed monitoring](labs/06-monitoring/README.md) | Investigate Container Insights logs, query managed Prometheus, and use Azure Managed Grafana | 60-90 minutes |
+| [4. Managed identities and Blob Storage](labs/04-identity-storage/README.md) | Read Azure Blob Storage without a password and verify read-only access | 45-60 minutes |
+| [5. Persistent volumes with Azure Disks](labs/05-persistent-volumes/README.md) | Connect a PVC to its PV and Azure Disk, and preserve data across pod replacement | 30-45 minutes |
+| [6. Managed Argo CD and Entra ID](labs/06-gitops/README.md) | Sign in with Entra ID, deploy from Git, and reconcile changes and drift | 90-120 minutes |
+| [7. Managed monitoring](labs/07-monitoring/README.md) | Investigate Container Insights logs, query managed Prometheus, and use Azure Managed Grafana | 60-90 minutes |
 
 Allow additional time for tool installation, permissions, and discussion.
 Exercises have **collapsed solution blocks**. Try the task first, then expand
@@ -34,22 +35,23 @@ Lab 1: portal cluster -> deploy demo -> delete portal resource group
 
 Lab 2: Terraform cluster in a VNet
          -> Lab 3: add AGC and route the demo
-         -> Lab 4: add identity and persistent-storage demos
-         -> Lab 5: add managed Argo CD and a separate GitOps demo
-         -> Lab 6: add Container Insights, managed Prometheus, and Managed Grafana
+         -> Lab 4: add the identity and Blob Storage demo
+         -> Lab 5: add a persistent-volume demo using an Azure Disk
+         -> Lab 6: add managed Argo CD and a separate GitOps demo
+         -> Lab 7: add Container Insights, managed Prometheus, and Managed Grafana
          -> final cleanup
 ```
 
-Create **two clusters over the course of the workshop**, not six. Delete the
-first before creating the second. Labs 2-6 reuse the same cluster and Terraform
+Create **two clusters over the course of the workshop**, not seven. Delete the
+first before creating the second. Labs 2-7 reuse the same cluster and Terraform
 state; do not run `terraform destroy` between them.
 
 Lab 2 enables OIDC and Workload Identity because the Lab 3 controller needs them.
 Lab 4 explains and uses them for an application. Lab 3 uses Helm for the ALB
-Controller; Lab 5 uses Microsoft's managed `Microsoft.ArgoCD` extension, **not** a
+Controller; Lab 6 uses Microsoft's managed `Microsoft.ArgoCD` extension, **not** a
 second Helm-installed Argo CD.
 
-Lab 6 adds managed monitoring to that cluster with default agent collection
+Lab 7 adds managed monitoring to that cluster with default agent collection
 and built-in dashboards. Its paid monitoring resources are not created in
 earlier labs. Grafana uses its built-in Entra authentication, independent of
 the Argo CD app registration.
@@ -65,9 +67,9 @@ is hard-coded, and no unsupported-version or paid LTS exception is required.
 | --- | --- |
 | `docs/00-setup.md` | Installation, login, permissions, terminology, and resuming work |
 | `infrastructure/` | Complete Terraform solution for the shared cluster and network |
-| `apps/demo/manifest.yaml` | Small HTTP demo for Labs 1-3 and the GitOps source for Lab 5 |
-| `apps/persistent-demo/manifest.yaml` | Web application and Azure Disk claim for Lab 4 |
-| `apps/monitoring-demo/manifest.yaml` | Small log-emitting workload for Lab 6's log and metric exercises |
+| `apps/demo/manifest.yaml` | Small HTTP demo for Labs 1-3 and the GitOps source for Lab 6 |
+| `apps/persistent-demo/manifest.yaml` | Web application and Azure Disk claim for Lab 5 |
+| `apps/monitoring-demo/manifest.yaml` | Small log-emitting workload for Lab 7's log and metric exercises |
 | `labs/` | Tasks, inline solutions, checkpoints, and troubleshooting |
 | `docs/cleanup.md` | Ordered teardown, including Entra objects outside resource groups |
 
@@ -91,7 +93,7 @@ This is a learning environment, not a production reference architecture:
 Production designs need separate decisions about private networking, AKS Entra
 authentication, least-privilege administration, TLS, resilience, remote state,
 monitoring retention/alerts, backups, and policy. Entra sign-in to **Argo CD**
-in Lab 5 is distinct from Entra authentication to the **Kubernetes API**.
+in Lab 6 is distinct from Entra authentication to the **Kubernetes API**.
 
 When finished, follow [Final cleanup](docs/cleanup.md). Closing your terminal or
 deleting a Kubernetes Deployment does not stop Azure billing.

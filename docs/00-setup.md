@@ -10,27 +10,27 @@ Azure or Entra permissions generally cannot be fixed by installing another tool.
 | Requirement | Why |
 | --- | --- |
 | An Azure subscription and Microsoft Entra tenant | Hosts the resources and identities |
-| A sandbox resource allowance and spending approval | Nodes, disks, public IPs, AGC, and Lab 6 monitoring incur charges |
+| A sandbox resource allowance and spending approval | Nodes, disks, public IPs, AGC, and Lab 7 monitoring incur charges |
 | Permission to create resources and assign Azure roles | Terraform and the identity labs create role assignments |
 | Permission to register Azure resource providers | Enables the resource types used by the labs |
-| Permission to create an Entra app registration, its federated credential, and a security group | Required for Argo CD SSO in Lab 5 |
+| Permission to create an Entra app registration, its federated credential, and a security group | Required for Argo CD SSO in Lab 6 |
 | GitHub account and permission to create a public fork | Lets you change the GitOps source without changing the instructor's repository |
 | Browser and a Bash terminal | Portal, Entra sign-in, and command-line exercises |
 
 For a dedicated training subscription, an instructor can grant **Contributor**
 plus **Role Based Access Control Administrator**, scoped appropriately. An Owner
 can also perform these tasks, but do not request subscription Owner in production.
-Lab 5 additionally needs permission to create
+Lab 6 additionally needs permission to create
 `Microsoft.KubernetesConfiguration/extensions`; the
 **Kubernetes Extension Contributor** role includes extension management.
 Role-assignment conditions may limit which roles you can grant.
-Lab 6 also assigns Grafana Editor to the attendee and grants Grafana's managed
+Lab 7 also assigns Grafana Editor to the attendee and grants Grafana's managed
 identity access to its metrics workspace; permission to create monitoring
 resources alone is not sufficient.
 
 **Azure roles and Entra directory permissions are separate.** Subscription Owner
 does not automatically allow app registrations or group creation. Ask the
-instructor or tenant administrator to pre-create Lab 5 objects if tenant policy
+instructor or tenant administrator to pre-create Lab 6 objects if tenant policy
 blocks them. Group-based enterprise-application assignment may require Entra ID
 P1; this lab does not require that assignment feature.
 
@@ -134,9 +134,9 @@ For another Linux distribution, use the official
 Cloud Shell Bash includes Azure CLI, `kubectl`, Git, Terraform, and Helm, but
 check their versions. It can be used for Lab 1.
 
-**Use a local Bash terminal for Labs 2-6.** This keeps Terraform state and the
-ignored workshop settings together on your machine. Labs 4-5 also use localhost
-port-forwards, and Lab 5's Entra redirect URI must match the machine running your
+**Use a local Bash terminal for Labs 2-7.** This keeps Terraform state and the
+ignored workshop settings together on your machine. Labs 5-6 also use localhost
+port-forwards, and Lab 6's Entra redirect URI must match the machine running your
 browser. Cloud Shell's web preview has a different URL and does not match those
 instructions.
 
@@ -244,7 +244,7 @@ az extension add --name k8s-extension --upgrade
 We use Helm for ALB Controller, so the AGC preview AKS add-on and `aks-preview`
 extension are **not required**. We do not need the `alb` CLI extension because
 the controller creates AGC resources from Kubernetes manifests.
-Lab 6 installs Azure CLI's `amg` and `monitor-control-service` extensions for
+Lab 7 installs Azure CLI's `amg` and `monitor-control-service` extensions for
 Managed Grafana and collection-rule diagnostics/cleanup when needed. There is
 no separate local Grafana or Prometheus installation.
 
@@ -269,7 +269,7 @@ printf 'export K8S_VERSION="%s"\n' "$K8S_VERSION" >> .workshop/env.sh
 
 Replace the placeholder before running it. The instructor should confirm both
 the starting version and its next-minor upgrade path shortly before the class,
-including compatibility with the Lab 3 controller and Lab 5 extension. AKS
+including compatibility with the Lab 3 controller and Lab 6 extension. AKS
 availability rolls out regionally; do not copy a stale version from an old
 workshop. Lab 1 can keep the portal's default version.
 
@@ -337,7 +337,7 @@ these checks so that commands target the correct cluster.
 | `az`, `terraform`, `helm`, or `kubectl`: command not found | Reopen the terminal, check `command -v TOOL`, and verify PATH in the same OS/shell where you installed it |
 | Login shows the wrong subscription | Run `az account list -o table`, then `az account set`; use the correct tenant if necessary |
 | `AuthorizationFailed` or provider registration denied | Have the instructor check the required Azure role and scope; re-login after a new assignment propagates |
-| Cannot create app registrations or groups | Tenant policy, not an AKS problem; arrange Entra objects with the instructor before Lab 5 |
+| Cannot create app registrations or groups | Tenant policy, not an AKS problem; arrange Entra objects with the instructor before Lab 6 |
 | Download, image pull, or repository access fails | Check corporate proxy/firewall access to Microsoft, GitHub, HashiCorp, Docker Hub, and the container registries; do not disable certificate verification |
 | `kubectl` talks to localhost or another cluster | Get credentials for the intended AKS cluster and check the current context |
 | Quota exceeded or SKU unavailable | Request quota or agree on a supported region/SKU before provisioning |

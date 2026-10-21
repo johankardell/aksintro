@@ -91,7 +91,7 @@ Inspect [`apps/demo/manifest.yaml`](../../apps/demo/manifest.yaml). Identify the
 Deployment, container image, readiness probe, and Service.
 
 Create a `demo` namespace, deploy there, and wait for the pod to become ready.
-The sample leaves namespace selection to the caller so Lab 5 can reuse it in a
+The sample leaves namespace selection to the caller so Lab 6 can reuse it in a
 separate namespace. GitOps is not involved yet.
 
 <details>

@@ -1,26 +1,25 @@
-# Lab 4: Managed identities and persistent volumes
+# Lab 4: Managed identities and Blob Storage
 
-[Home](../../README.md) | [Previous: Lab 3](../03-agc/README.md) | [Next: Lab 5](../05-gitops/README.md)
+[Home](../../README.md) | [Previous: Lab 3](../03-agc/README.md) | [Next: Lab 5](../05-persistent-volumes/README.md)
 
 **Goal:** Use an application identity to read a private blob without a password,
-and prove that a persistent volume survives pod replacement.
+and confirm that read-only access does not permit writes.
 
-**Time:** 75-90 minutes. **Prerequisites:** Lab 2 cluster, preferably Lab 3
+**Time:** 45-60 minutes. **Prerequisites:** Lab 2 cluster, preferably Lab 3
 completed, Azure role-assignment permissions, and permission to seed Blob
 Storage. No new cluster, SDK installation, or container build is required.
 
-## Two separate concepts
+## Which identity does what?
 
 | Identity/storage mechanism | What it does |
 | --- | --- |
 | AKS cluster identity | Lets the AKS service manage Azure infrastructure |
 | ALB Controller identity | Lets the controller configure AGC |
 | Application Workload Identity | Exchanges a pod's projected token for an Entra token to call Azure APIs |
-| Azure Disk CSI driver and PVC | Provision and attach storage to a pod |
 
-**A PVC does not give an application permission to Azure Blob Storage.** The
-blob exercise and disk exercise are deliberately separate, so you can see
-which identity and storage mechanism is responsible for each result.
+This lab uses the Blob Storage API, not a mounted disk. Lab 5 introduces
+persistent volumes backed by Azure Disks. **A PVC does not give an application
+permission to Azure Blob Storage.**
 
 ## 1. Reconnect and confirm identity support
 
@@ -230,94 +229,10 @@ This expected denial is part of the exercise, not a lab setup error.
 
 </details>
 
-## 6. Deploy a web application with a persistent volume
-
-Inspect [`apps/persistent-demo/manifest.yaml`](../../apps/persistent-demo/manifest.yaml).
-It requests an Azure Disk through the AKS-provided `managed-csi` StorageClass.
-The init container writes an initial page **only if it does not already exist**.
-
-<details>
-<summary>Solution: claim, web deployment, and first request</summary>
-
-```bash
-kubectl get storageclass managed-csi -o yaml
-kubectl apply -f apps/persistent-demo/manifest.yaml
-kubectl -n storage-demo rollout status deployment/persistent-web --timeout=600s
-kubectl -n storage-demo get pods,pvc
-kubectl get pv
-```
-
-Expect the claim `web-content` to be `Bound`. The StorageClass uses
-`WaitForFirstConsumer`, so a newly created PVC can remain `Pending` until a pod
-that uses it is scheduled. A 1-GiB request can be billed at the disk SKU's minimum
-size; requested size is not an exact cost estimate.
-
-In a **second local terminal**, change to the repository root, load settings,
-and start a port-forward:
-
-```bash
-source .workshop/env.sh
-kubectl config current-context
-kubectl -n storage-demo port-forward service/persistent-web 8081:80
-```
-
-Keep it running. From the first terminal:
-
-```bash
-curl http://localhost:8081
-```
-
-Expect `Hello from a persistent Azure Disk!`.
-
-</details>
-
-## 7. Prove persistence across pod replacement
-
-Change the served file on the mounted volume, record the PVC/PV, and delete the
-pod, **not the PVC**. Verify the new pod serves the same file from the same disk.
-
-<details>
-<summary>Solution: write, replace, reconnect, and verify</summary>
-
-```bash
-kubectl -n storage-demo exec deployment/persistent-web -- sh -c \
-  'printf "Written before pod replacement.\n" > /usr/share/nginx/html/index.html'
-kubectl -n storage-demo get pods,pvc
-kubectl -n storage-demo get pvc web-content -o jsonpath='{.spec.volumeName}{"\n"}'
-curl http://localhost:8081
-kubectl -n storage-demo delete pod -l app=persistent-web
-kubectl -n storage-demo rollout status deployment/persistent-web --timeout=600s
-kubectl -n storage-demo get pods,pvc
-kubectl -n storage-demo get pvc web-content -o jsonpath='{.spec.volumeName}{"\n"}'
-```
-
-The new pod has a different name; the PVC and backing PV are unchanged.
-Port-forwards target a particular pod and can stop when it is replaced.
-Stop/restart the port-forward in the second terminal:
-
-```bash
-kubectl -n storage-demo port-forward service/persistent-web 8081:80
-```
-
-Then, in the first terminal:
-
-```bash
-curl http://localhost:8081
-```
-
-Expect `Written before pod replacement.`, not the initial page.
-
-`ReadWriteOnce` means the disk can be mounted read/write by one node at a time;
-it is not multi-node shared storage. This one-replica demo uses a `Recreate`
-deployment strategy to avoid competing disk attachments during updates.
-Do not scale it to several nodes. Persistent storage is also **not a backup**.
-
-</details>
-
 ## Checkpoint
 
 You have read a private blob without stored credentials, demonstrated a denied
-write, and preserved an edited web page across pod replacement.
+write, and distinguished the application identity from the cluster identity.
 
 ## Troubleshooting
 
@@ -327,19 +242,11 @@ write, and preserved an edited web page across pod replacement.
 | `AADSTS70021` / no matching federated identity | Compare exact issuer, namespace, ServiceAccount name, subject, and audience; allow federation propagation |
 | Blob read gets 403 after successful login | Check the reader role's principal and container scope; allow propagation and retry the login/read block |
 | `KeyBasedAuthenticationNotPermitted` | Use `--auth-mode login`; do not enable keys |
-| PVC remains pending | Describe PVC and pod; `WaitForFirstConsumer` is normal before scheduling, but insufficient node capacity or Azure disk quota is not |
-| Pod reports multi-attach | Ensure one replica, wait for old-node detach, and retain `Recreate`; do not delete the disk |
-| File disappears after restart | Check that you deleted only the pod and wrote under the mounted path; inspect PVC/PV names |
-| Port-forward stops after deletion | Restart it against the Service once the replacement pod is ready |
 
 ## Continue or stop
 
-Keep the identity, storage, and cluster for Lab 5. Stop the localhost
-port-forward with `Ctrl+C` when finished testing.
+Keep the identity, Blob Storage, and cluster, and continue to
+[Lab 5: persistent volumes with Azure Disks](../05-persistent-volumes/README.md).
+Use [Final cleanup](../../docs/cleanup.md) only when you are finished.
 
-Deleting a pod retains its PVC. Deleting the PVC with the default `Delete`
-reclaim policy deletes the backing disk and data. Use
-[Final cleanup](../../docs/cleanup.md) only when you are finished.
-
-References: [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster),
-[Azure Disk CSI storage](https://learn.microsoft.com/azure/aks/azure-csi-disk-storage-provision).
+Reference: [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster).

@@ -1,6 +1,6 @@
-# Lab 5: Managed Argo CD, GitOps, and Entra ID
+# Lab 6: Managed Argo CD, GitOps, and Entra ID
 
-[Home](../../README.md) | [Previous: Lab 4](../04-identity-storage/README.md) | [Next: Lab 6](../06-monitoring/README.md)
+[Home](../../README.md) | [Previous: Lab 5](../05-persistent-volumes/README.md) | [Next: Lab 7](../07-monitoring/README.md)
 
 **Goal:** Install Microsoft's managed Argo CD extension, sign in using Microsoft
 Entra ID, and reconcile a demo application from your GitHub fork.
@@ -11,7 +11,7 @@ and permission to create extensions, Entra app registrations, federated
 credentials, service principals, and security groups.
 
 **No Argo CD CLI, Helm-installed Argo CD, DNS name, or public TLS certificate is
-needed.** Lab 4's persistent data stays in `storage-demo`; this lab deploys a
+needed.** Lab 5's persistent data stays in `storage-demo`; this lab deploys a
 fresh copy of the HTTP demo in **`gitops-demo`**. Labs 2-3's `demo` namespace is
 not adopted, overwritten, or pruned.
 
@@ -58,7 +58,7 @@ kubectl get pods --all-namespaces
 az extension add --name k8s-extension --upgrade
 ```
 
-Keep the Lab 4 deployment and PVC; do not destroy/recreate AKS. Check node
+Keep the Lab 5 deployment and PVC; do not destroy/recreate AKS. Check node
 capacity if earlier workloads are not healthy. The cluster already has a
 managed identity, OIDC issuer, and Workload Identity enabled.
 
@@ -263,8 +263,8 @@ to your public fork. Leave the source path as `apps/demo`.
 <summary>Solution: local bootstrap manifests pointing at your fork</summary>
 
 ```bash
-cp labs/05-gitops/project.yaml .workshop/project.yaml
-cp labs/05-gitops/application.yaml .workshop/application.yaml
+cp labs/06-gitops/project.yaml .workshop/project.yaml
+cp labs/06-gitops/application.yaml .workshop/application.yaml
 printf 'Use this repository URL in BOTH files: https://github.com/%s/aksintro.git\n' "$GITHUB_USERNAME"
 ```
 
@@ -407,7 +407,7 @@ starts with manual sync.
 
 **Pruning** deletes tracked resources removed from Git. It is different from
 self-healing changed resources, and remains off in this lab. Never point this
-Application at Lab 4's PVC manifests or experiment with pruning persistent
+Application at Lab 5's PVC manifests or experiment with pruning persistent
 storage without a data-retention plan.
 
 </details>
@@ -416,7 +416,7 @@ storage without a data-retention plan.
 
 You can sign in using Entra ID without a local Argo CD password, deploy from
 your fork, trace a running version to its Git commit, and observe self-healing.
-The persistent workload from Lab 4 remains untouched.
+The persistent workload from Lab 5 remains untouched.
 
 ## Troubleshooting
 
@@ -449,7 +449,7 @@ access to bypass an SSO configuration error.
 ## Continue or stop
 
 Stop both local port-forwards with `Ctrl+C`. They do not stop Azure billing.
-Keep the cluster and continue to [Lab 6: managed monitoring](../06-monitoring/README.md).
+Keep the cluster and continue to [Lab 7: managed monitoring](../07-monitoring/README.md).
 If you are done, follow [Final cleanup](../../docs/cleanup.md), including the app
 registration and security group: **Entra objects are not deleted with an Azure
 resource group**.

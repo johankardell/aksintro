@@ -33,7 +33,7 @@ Inspect the files in [`infrastructure/`](../../infrastructure/):
 - `main.tf`: provider, resource group, VNet, two subnets, cluster identity,
   subnet role assignment, and AKS.
 - `variables.tf`: subscription, naming prefix, region, VM size, Kubernetes version,
-  and the optional Lab 6 monitoring workspace.
+  and the optional Lab 7 monitoring workspace.
 - `outputs.tf`: values used to connect and to complete subsequent labs.
 
 Find why the cluster depends on the subnet role assignment and why the AGC
