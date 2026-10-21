@@ -180,6 +180,9 @@ Confirm that the displayed subscription is your training subscription.
 
 ## 4. Get the repository and save your settings
 
+Complete this section **before Lab 1**. It creates the local `.workshop/env.sh`
+file used in Lab 1's **Connect from your terminal** step and subsequent labs.
+
 Fork [johankardell/aksintro](https://github.com/johankardell/aksintro) in GitHub,
 then clone your fork using its HTTPS URL. A public fork avoids repository
 credentials inside Argo CD. Never put private information in it.

@@ -8,6 +8,11 @@ a web application, and access it over a public IP.
 **Time:** 45-60 minutes. **Prerequisites:** setup completed; Azure CLI and
 `kubectl` installed. Terraform and Helm are not used yet.
 
+**Before starting:** create your local `.workshop/env.sh` file using
+[Setup guide, section 4: Get the repository and save your settings](../../docs/00-setup.md#4-get-the-repository-and-save-your-settings).
+Use the saved `LAB_ID` and `LOCATION` when creating the portal cluster below.
+The file stays local and must not be committed to Git.
+
 ## What you are building
 
 ```text
@@ -53,6 +58,11 @@ VMs, disks, and networking; do not manually edit those managed resources.
 
 Return to the repository root, load your settings, select the subscription, and
 download cluster credentials. Confirm that `kubectl` targets the new cluster.
+
+If `.workshop/env.sh` is missing, create it using
+[Setup guide, section 4](../../docs/00-setup.md#4-get-the-repository-and-save-your-settings)
+before running the commands below. Set `LAB_ID` and `LOCATION` to match the
+portal cluster you just created.
 
 <details>
 <summary>Solution: login, credentials, and nodes</summary>
