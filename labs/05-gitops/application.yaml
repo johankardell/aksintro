@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aksintro-demo
+  namespace: argocd
+spec:
+  project: aksintro
+  source:
+    repoURL: https://github.com/johankardell/aksintro.git
+    targetRevision: main
+    path: apps/demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitops-demo
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: aksintro
+  namespace: argocd
+spec:
+  description: Workshop demo only
+  sourceRepos:
+    - https://github.com/johankardell/aksintro.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: gitops-demo
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
