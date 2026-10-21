@@ -83,7 +83,7 @@ review the downloaded installer before executing it.
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg lsb-release git unzip
+sudo apt-get install -y ca-certificates curl gnupg lsb-release git unzip less
 curl -fsSL https://aka.ms/InstallAzureCLIDeb -o /tmp/install-azure-cli.sh
 less /tmp/install-azure-cli.sh
 sudo bash /tmp/install-azure-cli.sh
@@ -132,13 +132,16 @@ For another Linux distribution, use the official
 ### Azure Cloud Shell alternative
 
 Cloud Shell Bash includes Azure CLI, `kubectl`, Git, Terraform, and Helm, but
-check their versions. It can be useful for Labs 1-4. Use persistent storage if
-offered, or download Terraform state before the session ends. Do not create
-Lab 2 resources using state in an ephemeral session.
+check their versions. It can be used for Lab 1.
 
-**Use a local Bash terminal for Lab 5.** Its Entra redirect URI and port-forward
-use localhost on the machine running your browser. Cloud Shell's web preview
-has a different URL and does not match those instructions.
+**Use a local Bash terminal for Labs 2-6.** This keeps Terraform state and the
+ignored workshop settings together on your machine. Labs 4-5 also use localhost
+port-forwards, and Lab 5's Entra redirect URI must match the machine running your
+browser. Cloud Shell's web preview has a different URL and does not match those
+instructions.
+
+If you use Cloud Shell for Lab 1, clone your fork and repeat the settings and
+login steps below on your computer before Lab 2. No Terraform state exists yet.
 
 ## 3. Verify tools and sign in
 
@@ -248,7 +251,7 @@ Check availability:
 az aks get-versions --location "$LOCATION" --output table
 az vm list-usage --location "$LOCATION" --output table
 az vm list-skus --location "$LOCATION" \
-  --resource-type virtualMachines --size Standard_D2s_v5 --output table
+  --resource-type virtualMachines --size Standard_D4s_v5 --output table
 ```
 
 For **Lab 2's upgrade exercise**, the instructor should select a generally
@@ -267,11 +270,14 @@ including compatibility with the Lab 3 controller and Lab 5 extension. AKS
 availability rolls out regionally; do not copy a stale version from an old
 workshop. Lab 1 can keep the portal's default version.
 
-Lab 2 requests **two `Standard_D2s_v5` nodes**: four vCPUs in total, with capacity
-for at least one temporary upgrade node (two more vCPUs). Check both the regional
-vCPU quota and the VM-family quota. Ask the instructor for an available AKS
-system-pool-compatible size if this SKU is restricted; do not repeatedly create
-clusters hoping to bypass a quota error.
+Lab 2 requests **two `Standard_D4s_v5` nodes**: eight vCPUs in total. Reserve quota
+and capacity for at least one temporary upgrade node (four more vCPUs), for
+**12 vCPUs during the upgrade**. Check both the regional vCPU quota and the
+VM-family quota. AKS system nodes require at least 4 vCPUs and 4 GiB of memory;
+B-series VMs are not supported. See the
+[system node pool requirements](https://learn.microsoft.com/azure/aks/use-system-pools).
+Ask the instructor for an available compatible size if this SKU is restricted;
+do not repeatedly create clusters hoping to bypass a quota error.
 
 Make a cost estimate with the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/).
 Include two worker VMs, OS disks, load balancer/public IP resources, AGC, a small

@@ -32,7 +32,8 @@ Inspect the files in [`infrastructure/`](../../infrastructure/):
 
 - `main.tf`: provider, resource group, VNet, two subnets, cluster identity,
   subnet role assignment, and AKS.
-- `variables.tf`: subscription, naming prefix, region, and VM size.
+- `variables.tf`: subscription, naming prefix, region, VM size, Kubernetes version,
+  and the optional Lab 6 monitoring workspace.
 - `outputs.tf`: values used to connect and to complete subsequent labs.
 
 Find why the cluster depends on the subnet role assignment and why the AGC
@@ -72,10 +73,10 @@ The checked-in `.example` file shows an alternative you can copy and edit.
 source .workshop/env.sh
 az account set --subscription "$SUBSCRIPTION_ID"
 cat > infrastructure/terraform.tfvars <<EOF
-subscription_id = "$SUBSCRIPTION_ID"
-prefix          = "aksintro-$LAB_ID"
-location        = "$LOCATION"
-node_vm_size    = "Standard_D2s_v5"
+subscription_id    = "$SUBSCRIPTION_ID"
+prefix             = "aksintro-$LAB_ID"
+location           = "$LOCATION"
+node_vm_size       = "Standard_D4s_v5"
 kubernetes_version = "$K8S_VERSION"
 EOF
 ```
@@ -106,6 +107,9 @@ terraform -chdir=infrastructure apply lab.tfplan
 `-chdir` keeps the working directory, state, and generated files under
 `infrastructure/`. Initial provisioning can take 10-20 minutes. Applying a saved
 plan does not ask again: reviewing `plan` is the approval step.
+
+If `fmt -check` lists a file you edited, run
+`terraform -chdir=infrastructure fmt`, then repeat the check.
 
 The included `.terraform.lock.hcl` pins the selected provider version. Keep it
 for repeatability; if you intentionally update providers later, review and

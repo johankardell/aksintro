@@ -252,7 +252,8 @@ Expect the claim `web-content` to be `Bound`. The StorageClass uses
 that uses it is scheduled. A 1-GiB request can be billed at the disk SKU's minimum
 size; requested size is not an exact cost estimate.
 
-In a **second local terminal**, load settings and start a port-forward:
+In a **second local terminal**, change to the repository root, load settings,
+and start a port-forward:
 
 ```bash
 source .workshop/env.sh

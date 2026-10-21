@@ -31,9 +31,9 @@ change; the following settings matter more than matching a screenshot.
 3. Name the cluster `aksintro-YOUR-LAB-ID-portal`.
 4. Use the agreed training region and the default supported Kubernetes version.
 5. Select a development/test preset and the **Free** control-plane pricing tier.
-6. Use a small Linux system node pool. One node is sufficient if the portal
-   allows it; otherwise keep the preset's minimum. A system-pool-compatible
-   2-vCPU/8-GiB VM such as `Standard_D2s_v5` is suitable if available.
+6. Use a Linux system node pool with two nodes. Select an available
+   system-pool-compatible VM with at least 4 vCPUs and 4 GiB of memory, such as
+   `Standard_D4s_v5` (4 vCPUs / 16 GiB). Do not use a B-series VM.
 7. Keep the default managed identity and default networking. Use a **public**
    API endpoint. Do not add AGC, private endpoints, or optional integrations.
 8. If shown, select Kubernetes RBAC with local accounts for this introductory
@@ -67,7 +67,7 @@ kubectl config current-context
 kubectl get nodes
 ```
 
-Expect at least one node in `Ready` state. `get-credentials` updates the local
+Expect two nodes in `Ready` state. `get-credentials` updates the local
 `~/.kube/config` file; it does not create the cluster. Keep that file private.
 If the cluster uses Entra authentication due to tenant policy, follow the
 instructor's login instructions and use `kubelogin` from setup rather than

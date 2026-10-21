@@ -22,7 +22,7 @@ variable "location" {
 variable "node_vm_size" {
   description = "Available AKS system-pool VM size. Check regional and VM-family quota."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D4s_v5"
 }
 
 variable "kubernetes_version" {

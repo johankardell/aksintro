@@ -1,5 +1,5 @@
 subscription_id    = "YOUR-SUBSCRIPTION-ID"
 prefix             = "aksintro-jk01"
 location           = "northeurope"
-node_vm_size       = "Standard_D2s_v5"
+node_vm_size       = "Standard_D4s_v5"
 kubernetes_version = "REPLACE-WITH-OLDER-SUPPORTED-PATCH-VERSION"
