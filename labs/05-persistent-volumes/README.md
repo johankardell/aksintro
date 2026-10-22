@@ -1,6 +1,6 @@
 # Lab 5: Persistent volumes with Azure Disks
 
-[Home](../../README.md) | [Previous: Lab 4](../04-identity-storage/README.md) | [Next: Lab 6](../06-gitops/README.md)
+[Home](../../README.md) | [Previous: Lab 4](../04-identity-storage/README.md)
 
 **Goal:** Mount an Azure Disk in a web application and prove that its data
 survives pod replacement.
@@ -156,3 +156,5 @@ When finished with the workshop, follow
 driver is still running. Disks incur charges even when no pod uses them.
 
 Reference: [Azure Disk CSI storage](https://learn.microsoft.com/azure/aks/azure-csi-disk-storage-provision).
+
+[Next: Lab 6 - Managed Argo CD, GitOps, and Entra ID](../06-gitops/README.md)

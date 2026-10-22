@@ -1,6 +1,6 @@
 # Lab 6: Managed Argo CD, GitOps, and Entra ID
 
-[Home](../../README.md) | [Previous: Lab 5](../05-persistent-volumes/README.md) | [Next: Lab 7](../07-monitoring/README.md)
+[Home](../../README.md) | [Previous: Lab 5](../05-persistent-volumes/README.md)
 
 **Goal:** Install Microsoft's managed Argo CD extension, sign in using Microsoft
 Entra ID, and reconcile a demo application from your GitHub fork.
@@ -457,3 +457,5 @@ resource group**.
 References: [Microsoft managed Argo CD extension](https://learn.microsoft.com/azure/azure-arc/kubernetes/tutorial-use-gitops-argocd),
 [Argo CD with Entra OIDC and federation](https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/microsoft/),
 [Argo CD automatic sync](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).
+
+[Next: Lab 7 - Container Insights, managed Prometheus, and Managed Grafana](../07-monitoring/README.md)

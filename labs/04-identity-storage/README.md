@@ -1,6 +1,6 @@
 # Lab 4: Managed identities and Blob Storage
 
-[Home](../../README.md) | [Previous: Lab 3](../03-agc/README.md) | [Next: Lab 5](../05-persistent-volumes/README.md)
+[Home](../../README.md) | [Previous: Lab 3](../03-agc/README.md)
 
 **Goal:** Use an application identity to read a private blob without a password,
 and confirm that read-only access does not permit writes.
@@ -250,3 +250,5 @@ Keep the identity, Blob Storage, and cluster, and continue to
 Use [Final cleanup](../../docs/cleanup.md) only when you are finished.
 
 Reference: [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster).
+
+[Next: Lab 5 - Persistent volumes with Azure Disks](../05-persistent-volumes/README.md)

@@ -1,6 +1,6 @@
 # Lab 7: Container Insights, managed Prometheus, and Managed Grafana
 
-[Home](../../README.md) | [Previous: Lab 6](../06-gitops/README.md) | [Final cleanup](../../docs/cleanup.md)
+[Home](../../README.md) | [Previous: Lab 6](../06-gitops/README.md)
 
 **Goal:** Collect container logs and Kubernetes metrics, find a workload in
 Container Insights, and explore its metrics in Azure Managed Grafana.
@@ -438,3 +438,5 @@ References: [Enable AKS monitoring](https://learn.microsoft.com/azure/azure-moni
 [default Prometheus collection](https://learn.microsoft.com/azure/azure-monitor/containers/prometheus-metrics-scrape-default),
 [link Managed Grafana](https://learn.microsoft.com/azure/managed-grafana/how-to-connect-azure-monitor-workspace),
 [disable monitoring](https://learn.microsoft.com/azure/azure-monitor/containers/kubernetes-monitoring-disable).
+
+[Next: Final cleanup](../../docs/cleanup.md)

@@ -1,6 +1,6 @@
 # Lab 2: Terraform, a virtual network, and a Kubernetes upgrade
 
-[Home](../../README.md) | [Previous: Lab 1](../01-portal/README.md) | [Next: Lab 3](../03-agc/README.md)
+[Home](../../README.md) | [Previous: Lab 1](../01-portal/README.md)
 
 **Goal:** Provision a repeatable AKS environment in your own VNet, deploy the
 demo again, and upgrade an older supported Kubernetes version.
@@ -302,3 +302,5 @@ Keep the state and upgraded cluster.
 **Finished for now:** Azure keeps billing. Either resume later with the same
 state or follow [Final cleanup](../../docs/cleanup.md). Do not simply delete
 the resource group in the portal while keeping stale Terraform state.
+
+[Next: Lab 3 - Application Gateway for Containers](../03-agc/README.md)

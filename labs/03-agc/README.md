@@ -1,6 +1,6 @@
 # Lab 3: Application Gateway for Containers
 
-[Home](../../README.md) | [Previous: Lab 2](../02-terraform/README.md) | [Next: Lab 4](../04-identity-storage/README.md)
+[Home](../../README.md) | [Previous: Lab 2](../02-terraform/README.md)
 
 **Goal:** Put Application Gateway for Containers (AGC) in front of the existing
 demo using Kubernetes Gateway API.
@@ -292,3 +292,5 @@ ApplicationLoadBalancer must be deleted **while ALB Controller is still running*
 References: [ALB Controller with Helm](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller-helm),
 [controller-managed AGC](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-create-application-gateway-for-containers-managed-by-alb-controller),
 [Gateway API routing](https://learn.microsoft.com/azure/application-gateway/for-containers/how-to-path-header-query-string-routing-gateway-api).
+
+[Next: Lab 4 - Managed identities and Blob Storage](../04-identity-storage/README.md)

@@ -1,6 +1,6 @@
 # Lab 1: Your first cluster in the Azure portal
 
-[Home](../../README.md) | [Setup](../../docs/00-setup.md) | [Next: Lab 2](../02-terraform/README.md)
+[Home](../../README.md) | [Previous: Setup](../../docs/00-setup.md)
 
 **Goal:** Create a simple AKS cluster without writing infrastructure code, deploy
 a web application, and access it over a public IP.
@@ -202,4 +202,4 @@ cluster deletion.
 
 </details>
 
-[Continue to Lab 2](../02-terraform/README.md).
+[Next: Lab 2 - Terraform, a virtual network, and a Kubernetes upgrade](../02-terraform/README.md)
