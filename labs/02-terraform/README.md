@@ -111,10 +111,10 @@ plan does not ask again: reviewing `plan` is the approval step.
 If `fmt -check` lists a file you edited, run
 `terraform -chdir=infrastructure fmt`, then repeat the check.
 
-The included `.terraform.lock.hcl` pins the selected provider version. Keep it
-for repeatability; if you intentionally update providers later, review and
-commit the changed lock file in your own fork. Do not commit
-`.terraform/`, `terraform.tfvars`, state, or saved plans. State can contain
+Terraform generates `.terraform.lock.hcl` to pin your selected provider version.
+Keep it locally for repeatability; this workshop ignores it in Git. Review any
+provider changes if you intentionally run `terraform init -upgrade`. Do not commit
+lock files, `.terraform/`, `terraform.tfvars`, state, or saved plans. State can contain
 cluster credentials even though they are not printed as outputs.
 
 If apply fails, read the actual error and fix its cause, then create a **new**
