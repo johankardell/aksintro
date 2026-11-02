@@ -5,8 +5,9 @@
 **Goal:** Put Application Gateway for Containers (AGC) in front of the existing
 demo using Kubernetes Gateway API.
 
-**Time:** 60-90 minutes. **Prerequisites:** upgraded Lab 2 cluster, Helm 3, AGC
-providers registered, and permission to assign roles. No new cluster is needed.
+**Time:** 60-90 minutes. **Prerequisites:** upgraded Lab 2 cluster and its Terraform
+state, Terraform, Helm 3, AGC providers registered, and permission to assign roles.
+No new cluster is needed.
 
 ## What you are building
 
@@ -39,9 +40,7 @@ az account set --subscription "$SUBSCRIPTION_ID"
 export RESOURCE_GROUP=$(terraform -chdir=infrastructure output -raw resource_group_name)
 export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
 export AGC_SUBNET_ID=$(terraform -chdir=infrastructure output -raw agc_subnet_id)
-export OIDC_ISSUER=$(terraform -chdir=infrastructure output -raw oidc_issuer_url)
 export MC_RG=$(terraform -chdir=infrastructure output -raw node_resource_group_name)
-export MC_RG_ID=$(az group show --name "$MC_RG" --query id -o tsv)
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
 kubectl get nodes
@@ -66,45 +65,52 @@ for `deployment/demo` to become ready.
 
 ## 2. Give ALB Controller its own identity
 
-Create a dedicated identity, not the cluster identity or a future application's
-identity. Grant Reader and AGC Configuration Manager on the node resource
-group, and Network Contributor only on the AGC subnet.
+Use Terraform to create a dedicated identity, not the cluster identity or a
+future application's identity. [`infrastructure/agc.tf`](../../infrastructure/agc.tf)
+grants Reader and AGC Configuration Manager on the node resource group, and
+Network Contributor only on the AGC subnet.
+
+Add `enable_agc = true` to your existing `infrastructure/terraform.tfvars`.
+Keep all Lab 2 inputs, including the upgraded Kubernetes version. Do not
+regenerate the file or create another Terraform state directory.
 
 <details>
-<summary>Solution: identity, federation, and Azure permissions</summary>
+<summary>Solution: plan and apply the controller identity resources</summary>
 
 ```bash
-export ALB_IDENTITY_NAME="aksintro-${LAB_ID}-alb"
-az identity create --resource-group "$RESOURCE_GROUP" \
-  --name "$ALB_IDENTITY_NAME" --location "$LOCATION"
-export ALB_CLIENT_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$ALB_IDENTITY_NAME" --query clientId -o tsv)
-export ALB_PRINCIPAL_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$ALB_IDENTITY_NAME" --query principalId -o tsv)
-az identity federated-credential create \
-  --name alb-controller \
-  --identity-name "$ALB_IDENTITY_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --issuer "$OIDC_ISSUER" \
-  --subject system:serviceaccount:azure-alb-system:alb-controller-sa \
-  --audiences api://AzureADTokenExchange
-az role assignment create --assignee-object-id "$ALB_PRINCIPAL_ID" \
-  --assignee-principal-type ServicePrincipal --role Reader --scope "$MC_RG_ID"
-az role assignment create --assignee-object-id "$ALB_PRINCIPAL_ID" \
-  --assignee-principal-type ServicePrincipal \
-  --role "AppGw for Containers Configuration Manager" --scope "$MC_RG_ID"
-az role assignment create --assignee-object-id "$ALB_PRINCIPAL_ID" \
-  --assignee-principal-type ServicePrincipal \
-  --role "Network Contributor" --scope "$AGC_SUBNET_ID"
+terraform -chdir=infrastructure fmt -check
+terraform -chdir=infrastructure validate
+terraform -chdir=infrastructure plan -out=agc.tfplan
 ```
 
-The federated subject must exactly match the controller's namespace and
-ServiceAccount. Allow several minutes for new identities and role assignments
-to propagate. If Azure reports that the principal does not exist yet, wait and
-retry the failed assignment; do not grant broader roles.
+Review the plan: expect **five new resources** (one identity, one federated
+credential, and three role assignments), with no cluster or network changes.
+Stop if it proposes AKS replacement or unrelated updates.
 
-AGC resources are created in the AKS **node resource group**, not managed by
-Terraform. The identity's permissions deliberately cover that lifecycle.
+```bash
+terraform -chdir=infrastructure apply agc.tfplan
+export ALB_CLIENT_ID=$(terraform -chdir=infrastructure output -raw alb_client_id)
+terraform -chdir=infrastructure plan
+```
+
+Expect the final plan to show no changes. When resuming, recover `ALB_CLIENT_ID`
+with the same output command; it is available only after enabling and applying
+these resources.
+
+Inspect `agc.tf`: the federated subject must exactly match the controller's
+namespace and ServiceAccount. Its issuer comes from the existing AKS cluster.
+Allow several minutes for new identities and role assignments to propagate.
+If apply reports that the principal does not exist yet, wait, create a **new**
+plan, and retry; do not grant broader roles.
+
+Terraform owns the identity, federated credential, and role assignments.
+AGC resources are created in the AKS **node resource group** by ALB Controller,
+not managed by Terraform. Keep `enable_agc = true` until the controller has
+deleted AGC during [Final cleanup](../../docs/cleanup.md).
+
+**Already completed the CLI-based version of this lab?** Import the existing
+identity, credential, and three role assignments before applying this change;
+see the migration steps below. Do not delete a working controller identity.
 
 </details>
 
@@ -258,6 +264,61 @@ credentials or sensitive data in this exercise.
 
 The demo works through AGC with a ClusterIP Service. You can trace Gateway ->
 HTTPRoute -> Service -> pods, and identify the controller's separate identity.
+
+## Migrating an existing CLI-based Lab 3
+
+Skip this section for a new deployment. If the old lab already created the ALB
+identity and permissions, add `enable_agc = true` to the existing tfvars, then
+import those resources into the **same Lab 2 state**. The identity name remains
+`aksintro-${LAB_ID}-alb`, matching the existing Terraform prefix.
+
+<details>
+<summary>Solution: adopt the existing resources without recreating them</summary>
+
+Recover the identity ID and inspect its assignments:
+
+```bash
+export ALB_IDENTITY_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
+  --name "aksintro-${LAB_ID}-alb" --query id -o tsv)
+export ALB_PRINCIPAL_ID=$(az identity show --ids "$ALB_IDENTITY_ID" \
+  --query principalId -o tsv)
+az role assignment list --assignee-object-id "$ALB_PRINCIPAL_ID" --all \
+  --query '[].{role:roleDefinitionName,scope:scope,id:id}' --output json
+```
+
+From that list, copy the full assignment IDs for Reader and AGC Configuration
+Manager on this cluster's node resource group, and Network Contributor on its
+AGC subnet. Replace the three placeholders below with those IDs; do not import
+assignments from another scope.
+
+```bash
+terraform -chdir=infrastructure import \
+  'azurerm_user_assigned_identity.alb[0]' "$ALB_IDENTITY_ID"
+terraform -chdir=infrastructure import \
+  'azurerm_federated_identity_credential.alb[0]' \
+  "${ALB_IDENTITY_ID}/federatedIdentityCredentials/alb-controller"
+terraform -chdir=infrastructure import \
+  'azurerm_role_assignment.alb_reader[0]' "READER-ROLE-ASSIGNMENT-ID"
+terraform -chdir=infrastructure import \
+  'azurerm_role_assignment.alb_configuration_manager[0]' "AGC-CONFIGURATION-ROLE-ASSIGNMENT-ID"
+terraform -chdir=infrastructure import \
+  'azurerm_role_assignment.alb_subnet[0]' "SUBNET-ROLE-ASSIGNMENT-ID"
+terraform -chdir=infrastructure plan -out=agc.tfplan
+```
+
+Expect no resource additions, updates, or deletions, only the new client ID
+output. If the plan proposes changing an imported resource, inspect its name,
+issuer, subject, role, and scope before proceeding.
+
+```bash
+terraform -chdir=infrastructure apply agc.tfplan
+export ALB_CLIENT_ID=$(terraform -chdir=infrastructure output -raw alb_client_id)
+```
+
+The running controller and AGC stay in place. Use the Terraform-based cleanup
+instructions from now on.
+
+</details>
 
 ## Troubleshooting
 

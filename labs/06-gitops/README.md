@@ -6,7 +6,8 @@
 Entra ID, and reconcile a demo application from your GitHub fork.
 
 **Time:** 90-120 minutes. **Prerequisites:** the existing upgraded Lab 2 cluster
-with Workload Identity, a public GitHub fork containing these files, local Bash,
+and Terraform state with Workload Identity, a public GitHub fork containing
+these files, local Bash,
 and permission to create extensions, Entra app registrations, federated
 credentials, service principals, and security groups.
 
@@ -33,9 +34,10 @@ Two identity paths are involved:
   authenticate as that app registration without a client secret.
 
 The managed extension's workload-identity configuration also takes a dedicated
-managed identity for its other components. We create one rather than reuse the
-Lab 4 blob reader. A public GitHub repository needs no Azure data role or GitHub
-token.
+managed identity for its other components. Terraform creates one rather than
+reusing the Lab 4 blob reader, and manages the extension's installation settings.
+Entra objects and the SSO app's federated credential remain outside Terraform.
+A public GitHub repository needs no Azure data role or GitHub token.
 
 ## 1. Reconnect and check the existing cluster
 
@@ -50,7 +52,6 @@ az account set --subscription "$SUBSCRIPTION_ID"
 export RESOURCE_GROUP=$(terraform -chdir=infrastructure output -raw resource_group_name)
 export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
 export OIDC_ISSUER=$(terraform -chdir=infrastructure output -raw oidc_issuer_url)
-export TENANT_ID=$(az account show --query tenantId -o tsv)
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
 kubectl get nodes
@@ -137,17 +138,12 @@ cat > .workshop/argocd-sso-federation.json <<EOF
 EOF
 az ad app federated-credential create --id "$SSO_APP_ID" \
   --parameters .workshop/argocd-sso-federation.json
-export ARGOCD_IDENTITY_NAME="aksintro-${LAB_ID}-argocd"
-az identity create --resource-group "$RESOURCE_GROUP" \
-  --name "$ARGOCD_IDENTITY_NAME" --location "$LOCATION"
-export ARGOCD_MI_CLIENT_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$ARGOCD_IDENTITY_NAME" --query clientId -o tsv)
-az identity federated-credential create --name argocd-repo-server \
-  --identity-name "$ARGOCD_IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" \
-  --issuer "$OIDC_ISSUER" \
-  --subject system:serviceaccount:argocd:argocd-repo-server \
-  --audiences api://AzureADTokenExchange
 ```
+
+[`infrastructure/argocd.tf`](../../infrastructure/argocd.tf) creates the separate
+managed identity and its `argocd-repo-server` federation in the next step.
+Inspect its issuer, subject, and audience before applying. On resuming, inspect
+the SSO app's existing federated credential rather than creating it again.
 
 The **app client ID** is for browser OIDC/server authentication. The **managed
 identity client ID** configures the extension's other workload-identity use.
@@ -160,58 +156,39 @@ Allow a few minutes for federation to propagate.
 
 ## 4. Install the managed extension with SSO and scoped permissions
 
-Prepare the non-secret OIDC and RBAC configuration. Members of the lab group
-can view, sync, and update applications **only in the `aksintro` project**.
+Terraform supplies the non-secret OIDC and RBAC configuration. Members of the
+lab group can view, sync, and update applications **only in the `aksintro` project**.
 They do not receive Argo CD's unrestricted administrator role.
 
 <details>
-<summary>Solution: OIDC, group RBAC, and Microsoft.ArgoCD extension</summary>
+<summary>Solution: Terraform-managed identity and Microsoft.ArgoCD extension</summary>
 
 ```bash
-export OIDC_CONFIG=$(cat <<EOF
-name: Microsoft Entra ID
-issuer: https://login.microsoftonline.com/$TENANT_ID/v2.0
-clientID: $SSO_APP_ID
-azure:
-  useWorkloadIdentity: true
-requestedIDTokenClaims:
-  groups:
-    essential: true
-requestedScopes:
-  - openid
-  - profile
-  - email
-EOF
-)
-export RBAC_POLICY=$(cat <<EOF
-p, role:lab-operator, applications, get, aksintro/*, allow
-p, role:lab-operator, applications, sync, aksintro/*, allow
-p, role:lab-operator, applications, update, aksintro/*, allow
-p, role:lab-operator, projects, get, aksintro, allow
-g, $ARGOCD_GROUP_ID, role:lab-operator
-EOF
-)
-az k8s-extension create --resource-group "$RESOURCE_GROUP" \
-  --cluster-name "$AKS_NAME" --cluster-type managedClusters \
-  --name argocd --extension-type Microsoft.ArgoCD \
-  --scope cluster --release-namespace argocd \
-  --config "fullnameOverride=argocd" \
-  --config "redis-ha.enabled=false" \
-  --config "azure.workloadIdentity.enabled=true" \
-  --config "azure.workloadIdentity.clientId=$ARGOCD_MI_CLIENT_ID" \
-  --config "azure.workloadIdentity.entraSSOClientId=$SSO_APP_ID" \
-  --config "server.serviceAccount.name=argocd-server" \
-  --config "server.serviceAccount.annotations.azure\.workload\.identity/client-id=$SSO_APP_ID" \
-  --config "repoServer.serviceAccount.name=argocd-repo-server" \
-  --config "repoServer.serviceAccount.annotations.azure\.workload\.identity/client-id=$ARGOCD_MI_CLIENT_ID" \
-  --config "server.service.type=ClusterIP" \
-  --config "configs.params.server\.insecure=true" \
-  --config "configs.cm.url=http://localhost:8080" \
-  --config "configs.cm.admin\.enabled=false" \
-  --config "configs.cm.oidc\.config=$OIDC_CONFIG" \
-  --config "configs.rbac.policy\.default=role:no-access" \
-  --config "configs.rbac.scopes=[groups]" \
-  --config "configs.rbac.policy\.csv=$RBAC_POLICY"
+printf 'argocd_sso_client_id = "%s"\nargocd_group_object_id = "%s"\n' \
+  "$SSO_APP_ID" "$ARGOCD_GROUP_ID"
+```
+
+Add those values and `enable_argocd = true` to the existing
+`infrastructure/terraform.tfvars`; preserve all earlier inputs. Terraform
+derives the OIDC tenant from the selected Azure provider credentials.
+If you already installed the CLI-based extension, follow
+[Terraform migration](../../docs/terraform-migration.md) first.
+
+```bash
+terraform -chdir=infrastructure init
+terraform -chdir=infrastructure fmt -check
+terraform -chdir=infrastructure validate
+terraform -chdir=infrastructure plan -out=argocd.tfplan
+```
+
+Expect **three additions**: the managed identity, its federated credential, and
+the managed extension. No cluster replacement or unrelated changes are expected.
+Inspect the extension's configuration, including the localhost URL, identity
+client IDs, and project-scoped RBAC, before applying.
+
+```bash
+terraform -chdir=infrastructure apply argocd.tfplan
+export ARGOCD_MI_CLIENT_ID=$(terraform -chdir=infrastructure output -raw argocd_managed_identity_client_id)
 az k8s-extension show --resource-group "$RESOURCE_GROUP" \
   --cluster-name "$AKS_NAME" --cluster-type managedClusters --name argocd \
   --query '{state:provisioningState,version:version}' --output table
@@ -219,9 +196,11 @@ kubectl -n argocd get deployments,statefulsets,pods,services
 kubectl -n argocd rollout status deployment/argocd-server --timeout=600s
 ```
 
-The escaped dots are intentional: keys such as `oidc.config` contain a literal
-dot inside Helm chart values. Keep each quoted `--config` argument intact.
-`[groups]` is the RBAC scopes list.
+The provider supports `Microsoft.ArgoCD` through its generic cluster-extension
+resource and configuration map; this is not a Helm-installed Argo CD.
+Escaped dots in `argocd.tf` are intentional: keys such as `oidc.config` contain
+a literal dot inside chart values. `[groups]` is the RBAC scopes list.
+Azure manages extension upgrades because no specific extension version is pinned.
 
 Verify the actual workload-identity wiring before attempting sign-in:
 
@@ -238,9 +217,9 @@ equal **`SSO_APP_ID`**, not `ARGOCD_MI_CLIENT_ID`. Its pod template must carry
 app client ID and tenant. These checks catch mismatched extension configuration
 instead of masking it with a client-secret fallback.
 
-The extension owns its installation settings. Correct them with
-`az k8s-extension update` using the relevant `--config` arguments, not
-unrecorded Helm upgrades or direct edits to extension-owned ConfigMaps.
+Terraform owns the extension's desired installation settings. Correct them in
+`argocd.tf` or the corresponding tfvars, then review/apply a new plan, not
+unrecorded CLI/Helm updates or direct edits to extension-owned ConfigMaps.
 Do not install a second Argo CD to resolve a failed extension.
 
 `server.insecure=true` means the server itself uses HTTP. That is acceptable

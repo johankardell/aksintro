@@ -5,9 +5,10 @@
 **Goal:** Use an application identity to read a private blob without a password,
 and confirm that read-only access does not permit writes.
 
-**Time:** 45-60 minutes. **Prerequisites:** Lab 2 cluster, preferably Lab 3
-completed, Azure role-assignment permissions, and permission to seed Blob
-Storage. No new cluster, SDK installation, or container build is required.
+**Time:** 45-60 minutes. **Prerequisites:** Lab 2 cluster and Terraform state,
+preferably Lab 3 completed, Azure role-assignment permissions, and permission
+to seed Blob Storage. No new cluster, SDK installation, or container build is
+required.
 
 ## Which identity does what?
 
@@ -33,7 +34,6 @@ source .workshop/env.sh
 az account set --subscription "$SUBSCRIPTION_ID"
 export RESOURCE_GROUP=$(terraform -chdir=infrastructure output -raw resource_group_name)
 export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
-export OIDC_ISSUER=$(terraform -chdir=infrastructure output -raw oidc_issuer_url)
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
 kubectl get nodes
@@ -53,31 +53,47 @@ Create a small LRS Storage account with public blob access and shared-key
 authentication disabled. The endpoint is reachable over the network, but
 access to data still requires Entra authorization.
 
-Give **your signed-in user** permission to upload the sample file. Azure
-Contributor alone does not grant Blob data access.
+[`infrastructure/blob.tf`](../../infrastructure/blob.tf) provisions the account,
+private container, application identity, federation, and two container-scoped
+data roles. **Your signed-in user** gets permission to upload the sample file;
+the application gets read-only access. Azure Contributor alone does not grant
+Blob data access.
+
+If you already completed the CLI-based lab, follow
+[Terraform migration](../../docs/terraform-migration.md) before applying.
 
 <details>
-<summary>Solution: Storage account, private container, and sample blob</summary>
+<summary>Solution: provision with Terraform, then seed the sample blob</summary>
 
-Generate a globally unique account name once and save it for resuming:
+Recover your tenant-local user object ID:
 
 ```bash
-export STORAGE_ACCOUNT="staks$(date +%s)${RANDOM}"
-printf 'export STORAGE_ACCOUNT="%s"\n' "$STORAGE_ACCOUNT" > .workshop/storage.env
-az storage account create --resource-group "$RESOURCE_GROUP" \
-  --name "$STORAGE_ACCOUNT" --location "$LOCATION" \
-  --sku Standard_LRS --kind StorageV2 \
-  --allow-blob-public-access false --allow-shared-key-access false \
-  --min-tls-version TLS1_2
-export STORAGE_ID=$(az storage account show --resource-group "$RESOURCE_GROUP" \
-  --name "$STORAGE_ACCOUNT" --query id -o tsv)
-az storage container-rm create --storage-account "$STORAGE_ACCOUNT" \
-  --resource-group "$RESOURCE_GROUP" --name labdata --public-access off
-export CONTAINER_SCOPE="${STORAGE_ID}/blobServices/default/containers/labdata"
 export USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
-az role assignment create --assignee-object-id "$USER_OBJECT_ID" \
-  --assignee-principal-type User --role "Storage Blob Data Contributor" \
-  --scope "$CONTAINER_SCOPE"
+printf 'attendee_object_id = "%s"\n' "$USER_OBJECT_ID"
+```
+
+Add that value and `enable_blob_storage = true` to the existing
+`infrastructure/terraform.tfvars`, preserving all earlier inputs. The default
+account name is stable and derived from the subscription and attendee prefix.
+If Azure reports a global name collision, set `storage_account_name` to another
+valid, unique name before retrying. Do not change an existing account's name
+after it contains data: that would replace it.
+
+```bash
+terraform -chdir=infrastructure init
+terraform -chdir=infrastructure fmt -check
+terraform -chdir=infrastructure validate
+terraform -chdir=infrastructure plan -out=blob.tfplan
+```
+
+Expect **six additions** and no AKS replacement or unrelated changes. Review
+the roles: the user gets Storage Blob Data Contributor and the application
+gets Storage Blob Data Reader, both on `labdata` only.
+
+```bash
+terraform -chdir=infrastructure apply blob.tfplan
+export STORAGE_ACCOUNT=$(terraform -chdir=infrastructure output -raw storage_account_name)
+export BLOB_CLIENT_ID=$(terraform -chdir=infrastructure output -raw blob_client_id)
 printf 'Read from Blob Storage using Workload Identity.\n' > .workshop/message.txt
 az storage blob upload --account-name "$STORAGE_ACCOUNT" \
   --container-name labdata --name message.txt --file .workshop/message.txt \
@@ -87,39 +103,34 @@ az storage blob upload --account-name "$STORAGE_ACCOUNT" \
 If upload returns `AuthorizationPermissionMismatch` immediately after the role
 assignment, wait several minutes and retry the upload. Do not enable shared
 keys to work around propagation. If tenant policy blocks querying your user
-object ID, have the instructor supply that tenant-local ID or seed the file.
+object ID, have the instructor supply it. An instructor can seed the blob if
+you cannot upload it; do not grant the application write access.
 
-On resuming, run `source .workshop/storage.env`; do not generate another account
-name. The storage account and container were created with CLI, not Terraform.
+On resuming, recover both values with the same Terraform output commands;
+`.workshop/storage.env` is no longer needed. Terraform uses the Resource Manager
+API to create the container, so account keys stay disabled. The blob's contents
+are deliberately seeded with CLI, not stored in Terraform state.
 
 </details>
 
-## 3. Create a least-privilege application identity
+## 3. Inspect the least-privilege application identity
 
-Create a dedicated identity and federate only
-`system:serviceaccount:identity-demo:blob-reader`. Give it **Storage Blob Data
+Inspect the dedicated identity in `blob.tf`. It federates only
+`system:serviceaccount:identity-demo:blob-reader` and receives **Storage Blob Data
 Reader** on the single container, not Contributor on the subscription.
 
 <details>
-<summary>Solution: managed identity, role, and federated credential</summary>
+<summary>Solution: inspect the identity and verify repeatability</summary>
 
 ```bash
-export BLOB_IDENTITY_NAME="aksintro-${LAB_ID}-blob"
-az identity create --resource-group "$RESOURCE_GROUP" \
-  --name "$BLOB_IDENTITY_NAME" --location "$LOCATION"
-export BLOB_CLIENT_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$BLOB_IDENTITY_NAME" --query clientId -o tsv)
-export BLOB_PRINCIPAL_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$BLOB_IDENTITY_NAME" --query principalId -o tsv)
-az role assignment create --assignee-object-id "$BLOB_PRINCIPAL_ID" \
-  --assignee-principal-type ServicePrincipal \
-  --role "Storage Blob Data Reader" --scope "$CONTAINER_SCOPE"
-az identity federated-credential create --name blob-reader \
-  --identity-name "$BLOB_IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" \
-  --issuer "$OIDC_ISSUER" \
-  --subject system:serviceaccount:identity-demo:blob-reader \
-  --audiences api://AzureADTokenExchange
+terraform -chdir=infrastructure state show 'azurerm_federated_identity_credential.blob[0]'
+terraform -chdir=infrastructure state show 'azurerm_role_assignment.blob_reader[0]'
+terraform -chdir=infrastructure plan
 ```
+
+Expect the exact ServiceAccount subject, the existing AKS issuer,
+`api://AzureADTokenExchange`, the container-scoped reader role, and a no-change
+plan. Allow a few minutes for federation and permissions to propagate.
 
 The **client ID** goes on the ServiceAccount. The **principal/object ID** is
 used for Azure role assignments. They are different IDs.

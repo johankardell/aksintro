@@ -6,8 +6,8 @@
 Container Insights, and explore its metrics in Azure Managed Grafana.
 
 **Time:** 60-90 minutes, including provisioning and ingestion delays.
-**Prerequisites:** the existing upgraded Lab 2 cluster, setup completed, and
-permission to create resources and assign Azure roles. Labs 3-6 can remain
+**Prerequisites:** the existing upgraded Lab 2 cluster and Terraform state,
+setup completed, and permission to create resources and assign Azure roles. Labs 3-6 can remain
 running but are not required for monitoring. No new cluster is needed.
 
 ## What you are building
@@ -63,10 +63,6 @@ az account set --subscription "$SUBSCRIPTION_ID"
 export RESOURCE_GROUP=$(terraform -chdir=infrastructure output -raw resource_group_name)
 export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
 export AKS_ID=$(az aks show --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --query id -o tsv)
-export MONITORING_RG="rg-aksintro-${LAB_ID}-monitoring"
-export LAW_NAME="aksintro-${LAB_ID}-logs"
-export AMW_NAME="aksintro-${LAB_ID}-metrics"
-export GRAFANA_NAME="aksintro-${LAB_ID}-grafana"
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
 kubectl get nodes
@@ -99,49 +95,54 @@ usable.
 
 ## 2. Create the workspaces and grant access
 
-Create a pay-as-you-go Log Analytics workspace with 30-day retention, an Azure
-Monitor workspace, and a basic **Standard** Managed Grafana instance. Keep
-Grafana's system-assigned managed identity enabled.
+[`infrastructure/monitoring.tf`](../../infrastructure/monitoring.tf) creates a
+pay-as-you-go Log Analytics workspace with 30-day retention, an Azure Monitor
+workspace, and a basic **Standard X1** Managed Grafana instance running major
+version **12**. Grafana's system-assigned managed identity stays enabled.
+The instructor must check regional availability for this Grafana version.
 
 <details>
-<summary>Solution: three resources and scoped Grafana permissions</summary>
+<summary>Solution: Terraform resources, scoped permissions, and outputs</summary>
 
 ```bash
-az group create --name "$MONITORING_RG" --location "$LOCATION"
-az monitor log-analytics workspace create --resource-group "$MONITORING_RG" \
-  --workspace-name "$LAW_NAME" --location "$LOCATION" \
-  --sku PerGB2018 --retention-time 30
-az monitor account create --resource-group "$MONITORING_RG" \
-  --name "$AMW_NAME" --location "$LOCATION"
-az grafana create --resource-group "$MONITORING_RG" \
-  --name "$GRAFANA_NAME" --location "$LOCATION" \
-  --sku-tier Standard --skip-role-assignments true
-export LAW_ID=$(az monitor log-analytics workspace show \
-  --resource-group "$MONITORING_RG" --workspace-name "$LAW_NAME" --query id -o tsv)
-export AMW_ID=$(az monitor account show --resource-group "$MONITORING_RG" \
-  --name "$AMW_NAME" --query id -o tsv)
-export GRAFANA_ID=$(az grafana show --resource-group "$MONITORING_RG" \
-  --name "$GRAFANA_NAME" --query id -o tsv)
-export GRAFANA_PRINCIPAL_ID=$(az grafana show --resource-group "$MONITORING_RG" \
-  --name "$GRAFANA_NAME" --query identity.principalId -o tsv)
 export USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
-az role assignment create --assignee-object-id "$USER_OBJECT_ID" \
-  --assignee-principal-type User --role "Grafana Editor" --scope "$GRAFANA_ID"
-az role assignment create --assignee-object-id "$GRAFANA_PRINCIPAL_ID" \
-  --assignee-principal-type ServicePrincipal \
-  --role "Monitoring Data Reader" --scope "$AMW_ID"
-az role assignment create --assignee-object-id "$USER_OBJECT_ID" \
-  --assignee-principal-type User --role "Log Analytics Reader" --scope "$LAW_ID"
+printf 'attendee_object_id = "%s"\n' "$USER_OBJECT_ID"
 ```
 
-Grafana creation can take several minutes. We skip its automatic role
-assignments so it does not receive broad subscription-wide Monitoring Reader
-access and the attendee does not become a Grafana Admin unnecessarily.
+Add `enable_monitoring_resources = true` and the printed `attendee_object_id`
+to the existing `infrastructure/terraform.tfvars`. If Lab 4 already set the
+user ID, verify it rather than adding a duplicate variable.
+Leave `log_analytics_workspace_id` unset for now: creating destinations does
+**not** enable collection. If you already created these resources with CLI,
+follow [Terraform migration](../../docs/terraform-migration.md) first.
+
+```bash
+terraform -chdir=infrastructure init
+terraform -chdir=infrastructure fmt -check
+terraform -chdir=infrastructure validate
+terraform -chdir=infrastructure plan -out=monitoring.tfplan
+```
+
+Expect **seven additions**: the monitoring resource group, three monitoring
+resources, and three scoped role assignments. Expect no AKS changes or replacement.
+
+```bash
+terraform -chdir=infrastructure apply monitoring.tfplan
+export MONITORING_RG=$(terraform -chdir=infrastructure output -raw monitoring_resource_group_name)
+export LAW_ID=$(terraform -chdir=infrastructure output -raw log_analytics_workspace_id)
+export AMW_ID=$(terraform -chdir=infrastructure output -raw azure_monitor_workspace_id)
+export GRAFANA_ID=$(terraform -chdir=infrastructure output -raw grafana_id)
+export GRAFANA_NAME="${GRAFANA_ID##*/}"
+```
+
+Recover these same outputs when resuming. Grafana creation can take several
+minutes. Terraform grants only the explicit scoped roles: no subscription-wide
+Monitoring Reader access or unnecessary Grafana Admin role.
 **Grafana Editor** permits Explore and dashboard editing; Contributor on the
 Azure resource alone is not a Grafana sign-in role.
 
-The second assignment lets **Grafana's managed identity** query Prometheus; it
-is separate from the human user's Grafana role. Managed Grafana uses Entra
+The Monitoring Data Reader assignment lets **Grafana's managed identity** query
+Prometheus; it is separate from the human user's Grafana role. Managed Grafana uses Entra
 authentication out of the box: no new app registration, client secret, or
 Lab 6 Argo CD SSO configuration is needed.
 
@@ -195,9 +196,11 @@ previously unmonitored Terraform cluster.
 
 ### Keep Terraform consistent with the cluster
 
-The root Terraform configuration has one optional monitoring input. It remains
-`null` throughout Labs 2-6, so earlier labs do not incur monitoring charges.
-Set it now to preserve the add-on settings you just enabled.
+The root Terraform configuration separates destination provisioning
+(`enable_monitoring_resources`) from the optional collection input
+(`log_analytics_workspace_id`). The latter remains `null` until CLI onboarding
+has configured the agents and collection resources. Set it now to preserve
+the add-on settings you just enabled.
 
 <details>
 <summary>Solution: record the workspace ID and check for unintended drift</summary>
@@ -221,10 +224,12 @@ and `monitor_metrics` blocks retain the enabled features. If the plan contains
 other drift, inspect it before applying anything; never apply a plan that
 disables the monitoring you are trying to demonstrate.
 
-Terraform tracks the cluster's two add-on settings. The CLI-created workspaces,
-Grafana linkage, data collection rules, and recording rules are **not**
-Terraform-managed. This keeps their onboarding basic while making ownership
-explicit; final cleanup covers both.
+Terraform owns the monitoring resource group, workspaces, Grafana, three access
+roles, and the cluster's two add-on settings. The CLI owns Grafana linkage,
+data collection rules/associations, and recording rules. `monitoring.tf`
+deliberately ignores changes only to Grafana's workspace integrations, so
+another Terraform apply does not undo CLI onboarding. Final cleanup stops
+collection before Terraform deletes the destinations.
 
 </details>
 
@@ -307,8 +312,7 @@ received the Grafana Editor role.
 <summary>Solution: built-in dashboards and two small PromQL queries</summary>
 
 ```bash
-az grafana show --resource-group "$MONITORING_RG" --name "$GRAFANA_NAME" \
-  --query properties.endpoint -o tsv
+terraform -chdir=infrastructure output -raw grafana_endpoint
 ```
 
 Open the printed **HTTPS** URL. Under **Dashboards**, find the managed Prometheus

@@ -10,6 +10,11 @@ Run from the repository root. Perform only the sections for labs you actually
 completed. If an object is already gone, verify that fact and skip its command;
 do not hide unexpected authorization or dependency errors.
 
+If you completed an older CLI-based version of Labs 4, 6, or 7, follow
+[Terraform migration](terraform-migration.md) before cleanup. Lab 3 has its own
+[identity migration](../labs/03-agc/README.md#migrating-an-existing-cli-based-lab-3).
+Do not manually delete resources that Terraform now owns.
+
 ## 1. Recover the correct cluster settings
 
 ```bash
@@ -19,8 +24,6 @@ export RESOURCE_GROUP=$(terraform -chdir=infrastructure output -raw resource_gro
 export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
 export AKS_ID=$(az aks show --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --query id -o tsv)
 export MC_RG=$(terraform -chdir=infrastructure output -raw node_resource_group_name)
-export AGC_SUBNET_ID=$(terraform -chdir=infrastructure output -raw agc_subnet_id)
-export MC_RG_ID=$(az group show --name "$MC_RG" --query id -o tsv)
 az account show --query '{subscription:name,id:id}' -o table
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
@@ -32,14 +35,18 @@ you will not have Terraform outputs.
 
 Stop port-forwards in their terminals with `Ctrl+C`.
 
-## 2. Stop monitoring and remove the monitoring resources
+## 2. Stop monitoring before deleting its destinations
+
+If you provisioned only the monitoring destinations and never enabled
+collection, skip the collection commands below. Keep the destination flag
+enabled so the final Terraform destroy still removes the billed resources.
 
 For Lab 7, inspect the collection rules associated with **this cluster** before
 disabling collection. Container Insights leaves its rule behind when its
 association is removed, so record that specific rule's ID first:
 
 ```bash
-export MONITORING_RG="rg-aksintro-${LAB_ID}-monitoring"
+export MONITORING_RG=$(terraform -chdir=infrastructure output -raw monitoring_resource_group_name)
 az monitor data-collection rule association list --resource "$AKS_ID" \
   --query '[].{name:name,rule:dataCollectionRuleId}' --output table
 export CI_DCR_ID=$(az monitor data-collection rule association show \
@@ -82,17 +89,18 @@ Remove the `log_analytics_workspace_id` line added in Lab 7 from
 `infrastructure/terraform.tfvars` (or set it to `null`) so Terraform no longer
 expects the add-ons to be enabled. Keep all other inputs and state.
 
-Review and delete only the dedicated lab monitoring resource group:
+Review the dedicated lab monitoring resource group, but leave its resources
+and `enable_monitoring_resources = true` in place for the final Terraform destroy:
 
 ```bash
 az resource list --resource-group "$MONITORING_RG" --output table
-az group delete --name "$MONITORING_RG"
 ```
 
-This deletes Managed Grafana, Log Analytics, the Azure Monitor workspace, and
-their resource-scoped role assignments. Azure also deletes the Azure Monitor
-workspace's `MA_..._managed` resource group. Prometheus data is irrecoverable
-when the workspace is deleted; Log Analytics normally uses soft deletion.
+Terraform will delete Managed Grafana, Log Analytics, the Azure Monitor workspace,
+and their managed role assignments. Deleting the resource group also removes
+any extra role assignments created by CLI onboarding. Azure deletes the Azure
+Monitor workspace's `MA_..._managed` resource group. Prometheus data is irrecoverable
+when its workspace is deleted; Log Analytics normally uses soft deletion.
 Retained telemetry is not a backup of your application's persistent data.
 Closing a dashboard or deleting the sample alone would not stop these charges.
 
@@ -104,14 +112,13 @@ For Lab 6:
 kubectl -n argocd delete application aksintro-demo
 kubectl -n argocd delete appproject aksintro
 kubectl delete namespace gitops-demo
-az k8s-extension delete --resource-group "$RESOURCE_GROUP" \
-  --cluster-name "$AKS_NAME" --cluster-type managedClusters --name argocd
 ```
 
 The sample Application has no cascading-deletion finalizer, so deleting it alone
 does not delete its workloads; we explicitly delete the lab namespace.
-Uninstalling the managed extension, rather than running Helm uninstall, lets
-Azure manage its lifecycle correctly. Review the extension-deletion prompt.
+Leave `enable_argocd = true` and its SSO/group inputs in place. The final
+Terraform destroy removes the managed extension before its identity and AKS.
+Do not run Helm uninstall or delete the extension manually.
 
 ## 4. Remove persistent storage while the CSI driver is running
 
@@ -145,13 +152,14 @@ sample file before deleting the storage account:
 
 ```bash
 kubectl delete namespace identity-demo
-source .workshop/storage.env
+export STORAGE_ACCOUNT=$(terraform -chdir=infrastructure output -raw storage_account_name)
 az storage account show --resource-group "$RESOURCE_GROUP" \
   --name "$STORAGE_ACCOUNT" --query '{name:name,id:id}' -o table
-az storage account delete --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT"
 ```
 
-This deletes all blobs in that account. Confirm only your lab account.
+Leave `enable_blob_storage = true`. The final Terraform destroy removes the
+container, account, application identity, federation, and two data roles.
+Deleting the container/account deletes all blobs; confirm only your lab account.
 
 ## 5. Let ALB Controller delete AGC before removing the controller
 
@@ -179,43 +187,17 @@ kubectl delete namespace alb-infra
 helm uninstall alb-controller --namespace azure-alb-system
 ```
 
-## 6. Remove extra Azure role assignments and managed identities
+## 6. Check Terraform ownership before destroying infrastructure
 
-Terraform owns the cluster identity and its subnet assignment. Do not remove
-those manually. The following identities were created by the lab commands.
+Terraform owns the cluster identity plus the enabled labs' managed identities,
+federated credentials, scoped roles, Blob Storage, monitoring resources, and
+Argo CD extension. Keep all completed lab flags enabled until the final destroy,
+so Terraform retains ownership. Do not delete identities or roles manually.
+ALB Controller must finish section 5 before its permissions are removed.
 
-For the **Lab 3 ALB identity**, remove its role assignments before deleting it.
-The subnet-scoped assignment must be removed before Terraform deletes that
-subnet:
-
-```bash
-export ALB_IDENTITY_NAME="aksintro-${LAB_ID}-alb"
-export ALB_PRINCIPAL_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "$ALB_IDENTITY_NAME" --query principalId -o tsv)
-az role assignment list --assignee-object-id "$ALB_PRINCIPAL_ID" --all -o table
-az role assignment delete --assignee "$ALB_PRINCIPAL_ID" \
-  --role Reader --scope "$MC_RG_ID"
-az role assignment delete --assignee "$ALB_PRINCIPAL_ID" \
-  --role "AppGw for Containers Configuration Manager" --scope "$MC_RG_ID"
-az role assignment delete --assignee "$ALB_PRINCIPAL_ID" \
-  --role "Network Contributor" --scope "$AGC_SUBNET_ID"
-az identity delete --resource-group "$RESOURCE_GROUP" --name "$ALB_IDENTITY_NAME"
-```
-
-For **Lab 4**, the container-scoped data-role assignments disappear with the
-storage account. After deleting it, remove the application's managed identity:
-
-```bash
-az identity delete --resource-group "$RESOURCE_GROUP" --name "aksintro-${LAB_ID}-blob"
-```
-
-For **Lab 6**, remove its separate managed identity after extension deletion:
-
-```bash
-az identity delete --resource-group "$RESOURCE_GROUP" --name "aksintro-${LAB_ID}-argocd"
-```
-
-Federated credentials on each managed identity are removed with that identity.
+The Lab 6 Entra app registration, service principal, security group, and SSO
+app federation remain externally managed; delete your own Entra objects in
+section 8, not before Argo CD teardown.
 
 ## 7. Destroy Terraform-managed infrastructure
 
@@ -228,8 +210,10 @@ terraform -chdir=infrastructure state list
 ```
 
 Review the destroy plan before applying. Expect AKS, the network, cluster
-identity, role assignment, and training resource group to be removed. AKS
-deletes its node resource group. `state list` should be empty afterward.
+identity, role assignment, and training resource group to be removed, plus the
+enabled labs' identities, federation, roles, storage, monitoring resources,
+and Argo CD extension. AKS deletes its node resource group.
+`state list` should be empty afterward.
 
 If resource-group deletion is blocked by an unmanaged lab resource, inspect
 the resource group, complete that resource's cleanup, then generate a new

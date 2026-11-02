@@ -32,8 +32,12 @@ Inspect the files in [`infrastructure/`](../../infrastructure/):
 
 - `main.tf`: provider, resource group, VNet, two subnets, cluster identity,
   subnet role assignment, and AKS.
+- `agc.tf`: optional Lab 3 ALB Controller identity, federation, and permissions;
+  disabled by default.
+- `blob.tf`, `argocd.tf`, `monitoring.tf`: optional Azure resources for Labs 4,
+  6, and 7; disabled by default.
 - `variables.tf`: subscription, naming prefix, region, VM size, Kubernetes version,
-  and the optional Lab 7 monitoring workspace.
+  optional lab flags, identity inputs, and the Lab 7 collection workspace ID.
 - `outputs.tf`: values used to connect and to complete subsequent labs.
 
 Find why the cluster depends on the subnet role assignment and why the AGC
@@ -58,6 +62,11 @@ you will explore application identities in Lab 4.
 The AzureRM provider's automatic resource-provider registration is disabled.
 The setup guide explicitly registers the providers, making permissions and
 registration failures easier to understand.
+
+AzureRM **4.81 or newer within major version 4** is required for the later
+labs' Resource Manager storage-container API and current Grafana configuration.
+If an older local lock file prevents initialization, run
+`terraform -chdir=infrastructure init -upgrade` and review the provider change.
 
 </details>
 
@@ -194,8 +203,10 @@ Terraform owns Azure resources here; `kubectl` owns the Kubernetes demo. We do
 not use a Terraform Kubernetes provider, so application changes are not shown
 in this plan.
 
-Later labs create extra Azure resources with CLI/controller commands. They do
-not become Terraform-managed just because they share the resource group.
+Labs 3, 4, 6, and 7 progressively add their Azure infrastructure to this state
+using default-off flags. Entra objects, monitoring onboarding resources, and
+controller-provisioned AGC/disks stay outside Terraform; they do not
+become Terraform-managed just because they share the resource group.
 Follow the ordered cleanup rather than assuming Terraform can delete every
 dependency in any order.
 

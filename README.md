@@ -66,12 +66,13 @@ is hard-coded, and no unsupported-version or paid LTS exception is required.
 | Path | Purpose |
 | --- | --- |
 | `docs/00-setup.md` | Installation, login, permissions, terminology, and resuming work |
-| `infrastructure/` | Complete Terraform solution for the shared cluster and network |
+| `infrastructure/` | Shared cluster/network and optional Azure resources for Labs 3, 4, 6, and 7 |
 | `apps/demo/manifest.yaml` | Small HTTP demo for Labs 1-3 and the GitOps source for Lab 6 |
 | `apps/persistent-demo/manifest.yaml` | Web application and Azure Disk claim for Lab 5 |
 | `apps/monitoring-demo/manifest.yaml` | Small log-emitting workload for Lab 7's log and metric exercises |
 | `labs/` | Tasks, inline solutions, checkpoints, and troubleshooting |
 | `docs/cleanup.md` | Ordered teardown, including Entra objects outside resource groups |
+| `docs/terraform-migration.md` | Import resources from older CLI-based Labs 4, 6, and 7 |
 
 No custom shell scripts, container build, private registry, custom DNS name,
 public TLS certificate, or Argo CD CLI is required. Commands use **Bash**.
@@ -97,3 +98,16 @@ in Lab 6 is distinct from Entra authentication to the **Kubernetes API**.
 
 When finished, follow [Final cleanup](docs/cleanup.md). Closing your terminal or
 deleting a Kubernetes Deployment does not stop Azure billing.
+
+## Checking the Terraform solution
+
+With Terraform 1.7+ (or OpenTofu with mock-provider support), run:
+
+```bash
+terraform -chdir=infrastructure fmt -check -recursive
+terraform -chdir=infrastructure validate
+terraform -chdir=infrastructure test
+```
+
+Initialize the provider first if needed. The tests use a mocked AzureRM provider;
+they do not create Azure resources or modify the workshop's live state.
