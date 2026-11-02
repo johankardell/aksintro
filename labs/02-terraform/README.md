@@ -277,9 +277,10 @@ value to the old version.
 
 ## Checkpoint
 
-You can connect to two nodes, explain the two subnets and Service range, reach
-the demo, and verify an in-place upgrade of the control plane **and** node pool.
-Keep the state and upgraded cluster.
+You can connect to the cluster with `kubectl`, verify that both nodes are
+`Ready`, explain the two subnets and Service range, reach the demo, and verify
+an in-place upgrade of the control plane **and** node pool. Keep the state and
+upgraded cluster.
 
 ## Troubleshooting
 

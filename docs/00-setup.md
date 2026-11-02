@@ -68,6 +68,7 @@ Then:
 ```bash
 brew update
 brew install azure-cli kubectl helm@3 git
+brew install Azure/kubelogin/kubelogin
 export PATH="$(brew --prefix helm@3)/bin:$PATH"
 brew tap hashicorp/tap
 brew install hashicorp/tap/terraform
@@ -75,6 +76,9 @@ brew install hashicorp/tap/terraform
 
 Add the Helm 3 PATH setting to your shell profile if Homebrew reports that the
 versioned formula is keg-only. Recheck `helm version --short` in a new terminal.
+
+macOS normally opens a Zsh terminal. Run `bash` before following the remaining
+workshop commands, and ensure the Helm PATH setting is available in that shell.
 
 ### Ubuntu / WSL Ubuntu
 
@@ -145,7 +149,8 @@ login steps below on your computer before Lab 2. No Terraform state exists yet.
 
 ## 3. Verify tools and sign in
 
-Use a current stable Azure CLI, Terraform **1.6 or newer**, and Helm **3**.
+Use a current stable Azure CLI (**2.75.0 or newer** for the Grafana extension),
+Terraform **1.6 or newer, below 2.0**, and Helm **3**.
 `kubectl` should be within one minor version of the cluster's Kubernetes
 version. If the latest installed client is too far ahead, reinstall a matching
 client after choosing the cluster version, using
@@ -156,6 +161,7 @@ paths above.
 az version
 terraform version
 kubectl version --client
+kubelogin --version
 helm version --short
 git --version
 curl --version
@@ -238,15 +244,51 @@ az provider register --namespace Microsoft.Insights --wait
 az provider register --namespace Microsoft.AlertsManagement --wait
 az provider register --namespace Microsoft.Monitor --wait
 az provider register --namespace Microsoft.Dashboard --wait
-az extension add --name k8s-extension --upgrade
 ```
+
+Install all Azure CLI extensions needed by the full workshop now, so later labs
+do not depend on downloading tools during an exercise:
+
+```bash
+az extension add --name k8s-extension --upgrade
+az extension add --name amg --upgrade
+az extension add --name monitor-control-service --upgrade
+az extension list --output table
+```
+
+| Extension | Used for |
+| --- | --- |
+| `k8s-extension` | Lab 6: install and manage the Microsoft-managed Argo CD extension |
+| `amg` | Lab 7: create and inspect Azure Managed Grafana |
+| `monitor-control-service` | Lab 7 and cleanup: inspect data collection rules and associations |
 
 We use Helm for ALB Controller, so the AGC preview AKS add-on and `aks-preview`
 extension are **not required**. We do not need the `alb` CLI extension because
 the controller creates AGC resources from Kubernetes manifests.
-Lab 7 installs Azure CLI's `amg` and `monitor-control-service` extensions for
-Managed Grafana and collection-rule diagnostics/cleanup when needed. There is
-no separate local Grafana or Prometheus installation.
+The lab commands do not require `k8s-configuration`, the Argo CD CLI, or a local
+Grafana/Prometheus installation.
+
+If `aks-preview` is listed, Microsoft's
+[monitoring onboarding guidance](https://learn.microsoft.com/azure/azure-monitor/containers/kubernetes-monitoring-enable)
+requires removing it before the stable Lab 7 commands:
+`az extension remove --name aks-preview`. Only remove it from your training CLI
+environment; if you need it for unrelated work, use a separate environment.
+
+Check that the command groups are available. These help commands do not create
+Azure resources:
+
+```bash
+az aks --help
+az k8s-extension --help
+az grafana --help
+az monitor account --help
+az monitor data-collection rule association --help
+```
+
+Installing an extension only adds commands to your local CLI. It does not
+enable a cluster add-on or create billable resources. Later labs repeat the
+extension installation/update commands as a recovery step if setup was skipped
+or you switched machines.
 
 Check availability:
 

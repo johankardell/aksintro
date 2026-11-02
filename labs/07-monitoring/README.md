@@ -80,9 +80,10 @@ az extension add --name monitor-control-service --upgrade
 az extension list --output table
 ```
 
-The additional local components are Azure CLI's **`amg` extension** for Grafana
-and **`monitor-control-service` extension** for collection-rule diagnostics and
-cleanup, not separate monitoring servers. If
+The local components, installed during setup, are Azure CLI's **`amg` extension**
+for Grafana and **`monitor-control-service` extension** for collection-rule
+diagnostics and cleanup, not separate monitoring servers. The commands above
+install or update them if you skipped setup or switched machines. If
 `aks-preview` is listed, Microsoft's monitoring onboarding guidance requires
 removing it with `az extension remove --name aks-preview` before using these
 stable commands. Earlier workshop labs do not require it. If you need that
