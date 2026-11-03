@@ -32,6 +32,8 @@ Inspect the files in [`infrastructure/`](../../infrastructure/):
 
 - `main.tf`: provider, resource group, VNet, two subnets, cluster identity,
   subnet role assignment, and AKS.
+- `network.tf`: an NSG for each subnet and its association; public HTTP for the
+  Lab 2 demo Service and public HTTP/HTTPS for the AGC frontend.
 - `agc.tf`: optional Lab 3 ALB Controller identity, federation, and permissions;
   disabled by default.
 - `blob.tf`, `argocd.tf`, `monitoring.tf`: optional Azure resources for Labs 4,
@@ -54,6 +56,13 @@ identity.
 The separate AGC `/24` has the required
 `Microsoft.ServiceNetworking/trafficControllers` delegation. It is reserved now
 to avoid redesigning the network in Lab 3, but no AGC gateway is billed yet.
+
+Both subnets have Terraform-managed NSGs. Their default rules retain VNet
+connectivity, Azure Load Balancer probes, and outbound access. Internet ingress
+is limited to TCP port 80 on AKS for the Lab 2 public demo Service, and TCP ports
+80/443 on AGC. The AGC rule does not configure TLS; Lab 3 still uses HTTP only.
+AGC associations created on or after April 23, 2026 enforce inbound NSG rules,
+so a default-only NSG blocks the public frontend.
 
 Two small nodes leave room for the later controllers and applications. OIDC and
 Workload Identity are enabled now because ALB Controller needs them in Lab 3;
@@ -101,6 +110,46 @@ not the placeholder. Keep the naming, region, and networking unchanged for Labs
 
 Initialize Terraform, check formatting and configuration, then save a plan.
 Read the plan before applying it. Do not use `-auto-approve` for this exercise.
+
+**Existing deployment with governance-created NSGs?** Import both NSGs and
+their subnet associations into the existing state before planning. Do not
+detach the NSGs or create another state directory.
+
+<details>
+<summary>Solution: adopt existing subnet NSGs</summary>
+
+Recover the subnet IDs and inspect their attached NSGs:
+
+```bash
+export AKS_SUBNET_ID=$(terraform -chdir=infrastructure output -raw aks_subnet_id)
+export AGC_SUBNET_ID=$(terraform -chdir=infrastructure output -raw agc_subnet_id)
+export AKS_NSG_ID=$(az network vnet subnet show --ids "$AKS_SUBNET_ID" \
+  --query networkSecurityGroup.id -o tsv)
+export AGC_NSG_ID=$(az network vnet subnet show --ids "$AGC_SUBNET_ID" \
+  --query networkSecurityGroup.id -o tsv)
+az network nsg show --ids "$AKS_NSG_ID" --query '{name:name,rules:securityRules}' -o json
+az network nsg show --ids "$AGC_NSG_ID" --query '{name:name,rules:securityRules}' -o json
+```
+
+Expect names `<prefix>-vnet-aks-nsg-<location>` and
+`<prefix>-vnet-agc-nsg-<location>`, matching `network.tf`. If no NSG is attached,
+skip its imports and let Terraform create it. If names or existing custom rules
+differ, reconcile the configuration first; do not replace an NSG or overwrite
+governance rules unintentionally. Import only resources not already in state:
+
+```bash
+terraform -chdir=infrastructure import azurerm_network_security_group.aks "$AKS_NSG_ID"
+terraform -chdir=infrastructure import azurerm_network_security_group.agc "$AGC_NSG_ID"
+terraform -chdir=infrastructure import azurerm_subnet_network_security_group_association.aks "$AKS_SUBNET_ID"
+terraform -chdir=infrastructure import azurerm_subnet_network_security_group_association.agc "$AGC_SUBNET_ID"
+```
+
+Then follow the plan/apply steps below. For an otherwise unchanged existing
+deployment with default-only NSGs, expect two in-place NSG updates, no subnet or
+cluster replacement, and no new NSGs. Coordinate with the governance owner if
+automation continually overwrites the rules.
+
+</details>
 
 <details>
 <summary>Solution: Terraform workflow</summary>

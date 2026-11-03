@@ -120,5 +120,8 @@ resource "azurerm_kubernetes_cluster" "lab" {
     outbound_type     = "loadBalancer"
   }
 
-  depends_on = [azurerm_role_assignment.cluster_subnet]
+  depends_on = [
+    azurerm_role_assignment.cluster_subnet,
+    azurerm_subnet_network_security_group_association.aks,
+  ]
 }

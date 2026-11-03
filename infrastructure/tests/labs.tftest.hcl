@@ -28,6 +28,12 @@ mock_provider "azurerm" {
     }
   }
 
+  mock_resource "azurerm_network_security_group" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/test-lab-rg/providers/Microsoft.Network/networkSecurityGroups/test-nsg"
+    }
+  }
+
   mock_resource "azurerm_storage_account" {
     defaults = {
       id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/test-lab-rg/providers/Microsoft.Storage/storageAccounts/teststorage"
@@ -84,6 +90,48 @@ variables {
   storage_account_name        = null
   grafana_major_version       = "12"
   log_analytics_workspace_id  = null
+}
+
+run "subnet_network_security" {
+  command = apply
+
+  assert {
+    condition = (
+      azurerm_subnet_network_security_group_association.aks.subnet_id == azurerm_subnet.aks.id &&
+      azurerm_subnet_network_security_group_association.aks.network_security_group_id == azurerm_network_security_group.aks.id &&
+      azurerm_subnet_network_security_group_association.agc.subnet_id == azurerm_subnet.agc.id &&
+      azurerm_subnet_network_security_group_association.agc.network_security_group_id == azurerm_network_security_group.agc.id
+    )
+    error_message = "Each subnet must be associated with its Terraform-managed NSG."
+  }
+
+  assert {
+    condition = (
+      length(azurerm_network_security_group.agc.security_rule) == 1 &&
+      alltrue([
+        for rule in azurerm_network_security_group.agc.security_rule :
+        rule.direction == "Inbound" &&
+        rule.access == "Allow" &&
+        rule.protocol == "Tcp" &&
+        rule.source_address_prefix == "Internet" &&
+        toset(rule.destination_port_ranges) == toset(["80", "443"]) &&
+        rule.destination_port_range == null &&
+        rule.priority < 65000
+      ]) &&
+      length(azurerm_network_security_group.aks.security_rule) == 1 &&
+      alltrue([
+        for rule in azurerm_network_security_group.aks.security_rule :
+        rule.direction == "Inbound" &&
+        rule.access == "Allow" &&
+        rule.protocol == "Tcp" &&
+        rule.source_address_prefix == "Internet" &&
+        rule.destination_port_range == "80" &&
+        rule.destination_port_ranges == null &&
+        rule.priority < 65000
+      ])
+    )
+    error_message = "Allow only AGC HTTP/HTTPS and the existing Lab 2 HTTP endpoint; retain Azure's default internal, health-probe and outbound rules."
+  }
 }
 
 run "later_labs_disabled" {
