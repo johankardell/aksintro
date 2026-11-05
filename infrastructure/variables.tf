@@ -16,13 +16,13 @@ variable "prefix" {
 variable "location" {
   description = "Azure region supporting AKS, AGC, and the selected node VM size."
   type        = string
-  default     = "northeurope"
+  default     = "swedencentral"
 }
 
 variable "node_vm_size" {
   description = "VM size shared by the system and apps pools. Must support AKS system nodes; check regional and VM-family quota."
   type        = string
-  default     = "Standard_D4s_v5"
+  default     = "Standard_D4as_v7"
 }
 
 variable "kubernetes_version" {
@@ -43,6 +43,12 @@ variable "enable_agc" {
 
 variable "log_analytics_workspace_id" {
   description = "Lab 7 only: Log Analytics workspace ID. Null leaves both monitoring add-ons disabled."
+  type        = string
+  default     = null
+}
+
+variable "defender_log_analytics_workspace_id" {
+  description = "Optional existing Defender for Containers workspace ID. Preserves Defender independently of Lab 7 monitoring collection; null leaves Defender disabled."
   type        = string
   default     = null
 }

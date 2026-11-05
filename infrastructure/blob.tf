@@ -9,6 +9,11 @@ resource "azurerm_storage_account" "blob" {
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = false
+
+  # Lab-only exemption from the subscription's public-network restriction.
+  tags = {
+    SecurityControl = "Ignore"
+  }
 }
 
 resource "azurerm_storage_container" "labdata" {

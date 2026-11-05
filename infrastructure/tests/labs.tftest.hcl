@@ -77,26 +77,27 @@ mock_provider "azurerm" {
 }
 
 variables {
-  subscription_id             = "00000000-0000-0000-0000-000000000001"
-  prefix                      = "test-lab"
-  kubernetes_version          = "1.34.1"
-  enable_agc                  = false
-  enable_blob_storage         = false
-  enable_argocd               = false
-  enable_monitoring_resources = false
-  attendee_object_id          = ""
-  argocd_sso_client_id        = ""
-  argocd_group_object_id      = ""
-  storage_account_name        = null
-  grafana_major_version       = "12"
-  log_analytics_workspace_id  = null
+  subscription_id                     = "00000000-0000-0000-0000-000000000001"
+  prefix                              = "test-lab"
+  kubernetes_version                  = "1.34.1"
+  enable_agc                          = false
+  enable_blob_storage                 = false
+  enable_argocd                       = false
+  enable_monitoring_resources         = false
+  attendee_object_id                  = ""
+  argocd_sso_client_id                = ""
+  argocd_group_object_id              = ""
+  storage_account_name                = null
+  grafana_major_version               = "12"
+  log_analytics_workspace_id          = null
+  defender_log_analytics_workspace_id = null
 }
 
 run "application_pool_and_system_isolation" {
   command = plan
 
   variables {
-    node_vm_size       = "Standard_D8s_v5"
+    node_vm_size       = "Standard_D8as_v7"
     kubernetes_version = "1.35.1"
   }
 
@@ -182,6 +183,7 @@ run "later_labs_disabled" {
       length(azurerm_kubernetes_cluster_extension.argocd) == 0 &&
       length(azurerm_resource_group.monitoring) == 0 &&
       length(azurerm_dashboard_grafana.lab) == 0 &&
+      length(azurerm_kubernetes_cluster.lab.microsoft_defender) == 0 &&
       length(azurerm_kubernetes_cluster.lab.oms_agent) == 0 &&
       length(azurerm_kubernetes_cluster.lab.monitor_metrics) == 0 &&
       output.blob_client_id == null &&
@@ -265,6 +267,24 @@ run "argocd_extension_and_identity_separation" {
       yamldecode(azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["configs.cm.oidc\\.config"]).azure.useWorkloadIdentity == true
     )
     error_message = "Argo CD must preserve the localhost-only, non-admin, scoped-RBAC SSO configuration."
+  }
+}
+
+run "defender_does_not_enable_lab7_collection" {
+  command = plan
+
+  variables {
+    defender_log_analytics_workspace_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-defender/providers/Microsoft.OperationalInsights/workspaces/defender-logs"
+  }
+
+  assert {
+    condition = (
+      azurerm_kubernetes_cluster.lab.microsoft_defender[0].log_analytics_workspace_id == var.defender_log_analytics_workspace_id &&
+      length(azurerm_kubernetes_cluster.lab.oms_agent) == 0 &&
+      length(azurerm_kubernetes_cluster.lab.monitor_metrics) == 0 &&
+      length(azurerm_log_analytics_workspace.lab) == 0
+    )
+    error_message = "Preserve the existing Defender workspace without creating Lab 7 destinations or enabling its monitoring agents."
   }
 }
 

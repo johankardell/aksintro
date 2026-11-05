@@ -1,7 +1,7 @@
 subscription_id    = "YOUR-SUBSCRIPTION-ID"
 prefix             = "aksintro-jk01"
-location           = "northeurope"
-node_vm_size       = "Standard_D4s_v5"
+location           = "swedencentral"
+node_vm_size       = "Standard_D4as_v7"
 kubernetes_version = "REPLACE-WITH-OLDER-SUPPORTED-PATCH-VERSION"
 
 # Set to true when starting Lab 3; keep enabled until AGC cleanup completes.
@@ -24,6 +24,9 @@ enable_monitoring_resources = false
 
 # Lab 7: copy the output here only AFTER CLI monitoring onboarding.
 # log_analytics_workspace_id = "YOUR-WORKSPACE-RESOURCE-ID"
+
+# Optional: preserve Defender for Containers if enabled in the training subscription.
+# defender_log_analytics_workspace_id = "YOUR-EXISTING-DEFENDER-WORKSPACE-RESOURCE-ID"
 
 # Preserve the installed major version when importing an older Grafana instance.
 # grafana_major_version = "11"

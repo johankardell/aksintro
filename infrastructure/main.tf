@@ -12,6 +12,7 @@ terraform {
 provider "azurerm" {
   subscription_id                 = var.subscription_id
   resource_provider_registrations = "none"
+  storage_use_azuread             = true
 
   features {}
 }
@@ -78,6 +79,14 @@ resource "azurerm_kubernetes_cluster" "lab" {
   oidc_issuer_enabled               = true
   workload_identity_enabled         = true
 
+  dynamic "microsoft_defender" {
+    for_each = var.defender_log_analytics_workspace_id == null ? [] : [var.defender_log_analytics_workspace_id]
+
+    content {
+      log_analytics_workspace_id = microsoft_defender.value
+    }
+  }
+
   dynamic "oms_agent" {
     for_each = var.log_analytics_workspace_id == null ? [] : [var.log_analytics_workspace_id]
 
@@ -128,15 +137,16 @@ resource "azurerm_kubernetes_cluster" "lab" {
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "apps" {
-  name                  = "apps"
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.lab.id
-  mode                  = "User"
-  node_count            = 2
-  node_taints           = []
-  vm_size               = var.node_vm_size
-  orchestrator_version  = var.kubernetes_version
-  vnet_subnet_id        = azurerm_subnet.aks.id
-  max_pods              = 30
+  name                        = "apps"
+  kubernetes_cluster_id       = azurerm_kubernetes_cluster.lab.id
+  mode                        = "User"
+  node_count                  = 2
+  node_taints                 = []
+  vm_size                     = var.node_vm_size
+  orchestrator_version        = var.kubernetes_version
+  vnet_subnet_id              = azurerm_subnet.aks.id
+  max_pods                    = 30
+  temporary_name_for_rotation = "appsrotate"
 
   upgrade_settings {
     max_surge = "1"
