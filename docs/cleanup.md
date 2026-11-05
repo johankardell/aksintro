@@ -11,9 +11,8 @@ completed. If an object is already gone, verify that fact and skip its command;
 do not hide unexpected authorization or dependency errors.
 
 If you completed an older CLI-based version of Labs 4, 6, or 7, follow
-[Terraform migration](terraform-migration.md) before cleanup. Lab 3 has its own
-[identity migration](../labs/03-agc/README.md#migrating-an-existing-cli-based-lab-3).
-Do not manually delete resources that Terraform now owns.
+[Terraform migration](terraform-migration.md) before cleanup. Do not manually
+delete resources that Terraform now owns.
 
 ## 1. Recover the correct cluster settings
 

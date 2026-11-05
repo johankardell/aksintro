@@ -7,9 +7,6 @@ New deployments can skip this page. Existing CLI-created resources from Labs
 subscription, prefix, region, and upgraded Kubernetes version. Do not delete
 working identities, change resource names, or discard state.
 
-Lab 3's separate [migration instructions](../labs/03-agc/README.md#migrating-an-existing-cli-based-lab-3)
-cover its ALB identity.
-
 ## 1. Set inputs matching the existing deployment
 
 Run from the repository root with the existing workshop environment loaded.

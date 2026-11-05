@@ -265,61 +265,6 @@ credentials or sensitive data in this exercise.
 The demo works through AGC with a ClusterIP Service. You can trace Gateway ->
 HTTPRoute -> Service -> pods, and identify the controller's separate identity.
 
-## Migrating an existing CLI-based Lab 3
-
-Skip this section for a new deployment. If the old lab already created the ALB
-identity and permissions, add `enable_agc = true` to the existing tfvars, then
-import those resources into the **same Lab 2 state**. The identity name remains
-`aksintro-${LAB_ID}-alb`, matching the existing Terraform prefix.
-
-<details>
-<summary>Solution: adopt the existing resources without recreating them</summary>
-
-Recover the identity ID and inspect its assignments:
-
-```bash
-export ALB_IDENTITY_ID=$(az identity show --resource-group "$RESOURCE_GROUP" \
-  --name "aksintro-${LAB_ID}-alb" --query id -o tsv)
-export ALB_PRINCIPAL_ID=$(az identity show --ids "$ALB_IDENTITY_ID" \
-  --query principalId -o tsv)
-az role assignment list --assignee-object-id "$ALB_PRINCIPAL_ID" --all \
-  --query '[].{role:roleDefinitionName,scope:scope,id:id}' --output json
-```
-
-From that list, copy the full assignment IDs for Reader and AGC Configuration
-Manager on this cluster's node resource group, and Network Contributor on its
-AGC subnet. Replace the three placeholders below with those IDs; do not import
-assignments from another scope.
-
-```bash
-terraform -chdir=infrastructure import \
-  'azurerm_user_assigned_identity.alb[0]' "$ALB_IDENTITY_ID"
-terraform -chdir=infrastructure import \
-  'azurerm_federated_identity_credential.alb[0]' \
-  "${ALB_IDENTITY_ID}/federatedIdentityCredentials/alb-controller"
-terraform -chdir=infrastructure import \
-  'azurerm_role_assignment.alb_reader[0]' "READER-ROLE-ASSIGNMENT-ID"
-terraform -chdir=infrastructure import \
-  'azurerm_role_assignment.alb_configuration_manager[0]' "AGC-CONFIGURATION-ROLE-ASSIGNMENT-ID"
-terraform -chdir=infrastructure import \
-  'azurerm_role_assignment.alb_subnet[0]' "SUBNET-ROLE-ASSIGNMENT-ID"
-terraform -chdir=infrastructure plan -out=agc.tfplan
-```
-
-Expect no resource additions, updates, or deletions, only the new client ID
-output. If the plan proposes changing an imported resource, inspect its name,
-issuer, subject, role, and scope before proceeding.
-
-```bash
-terraform -chdir=infrastructure apply agc.tfplan
-export ALB_CLIENT_ID=$(terraform -chdir=infrastructure output -raw alb_client_id)
-```
-
-The running controller and AGC stay in place. Use the Terraform-based cleanup
-instructions from now on.
-
-</details>
-
 ## Troubleshooting
 
 | Symptom | What to inspect or fix |
