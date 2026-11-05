@@ -74,7 +74,7 @@ the Argo CD app registration.
 
 Lab 2 intentionally starts on an **older, still-supported Kubernetes minor
 version**, chosen from the live regional version list. Attendees upgrade the
-control plane and node pool through Terraform before Lab 3. No obsolete version
+control plane and both node pools through Terraform before Lab 3. No obsolete version
 is hard-coded, and no unsupported-version or paid LTS exception is required.
 
 ## Repository map
@@ -88,7 +88,6 @@ is hard-coded, and no unsupported-version or paid LTS exception is required.
 | `apps/monitoring-demo/manifest.yaml` | Small log-emitting workload for Lab 7's log and metric exercises |
 | `labs/` | Tasks, inline solutions, checkpoints, and troubleshooting |
 | `docs/cleanup.md` | Ordered teardown, including Entra objects outside resource groups |
-| `docs/terraform-migration.md` | Import resources from older CLI-based Labs 4, 6, and 7 |
 
 No custom shell scripts, container build, private registry, custom DNS name,
 public TLS certificate, or Argo CD CLI is required. Commands use **Bash**.
@@ -99,7 +98,8 @@ Windows attendees should use WSL 2 with Ubuntu; see the setup guide.
 This is a learning environment, not a production reference architecture:
 
 - Public AKS API endpoint and local Kubernetes administrator credentials.
-- Small Linux node pool and non-HA Argo CD to keep costs down.
+- Two Linux system nodes reserved for critical add-ons, two application nodes,
+  and non-HA Argo CD.
 - HTTP for the public demo, containing no sensitive data.
 - Argo CD available only through a localhost port-forward, with Entra sign-in.
 - Terraform state stored locally; never commit it or lose it during the labs.

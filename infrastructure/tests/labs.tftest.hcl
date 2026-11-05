@@ -92,6 +92,40 @@ variables {
   log_analytics_workspace_id  = null
 }
 
+run "application_pool_and_system_isolation" {
+  command = plan
+
+  variables {
+    node_vm_size       = "Standard_D8s_v5"
+    kubernetes_version = "1.35.1"
+  }
+
+  assert {
+    condition = (
+      azurerm_kubernetes_cluster.lab.default_node_pool[0].only_critical_addons_enabled &&
+      azurerm_kubernetes_cluster.lab.default_node_pool[0].node_count == 2 &&
+      azurerm_kubernetes_cluster_node_pool.apps.name == "apps" &&
+      azurerm_kubernetes_cluster_node_pool.apps.mode == "User" &&
+      azurerm_kubernetes_cluster_node_pool.apps.node_count == 2 &&
+      azurerm_kubernetes_cluster_node_pool.apps.vm_size == azurerm_kubernetes_cluster.lab.default_node_pool[0].vm_size &&
+      length(azurerm_kubernetes_cluster_node_pool.apps.node_taints) == 0 &&
+      azurerm_kubernetes_cluster_node_pool.apps.vnet_subnet_id == azurerm_subnet.aks.id &&
+      azurerm_kubernetes_cluster_node_pool.apps.max_pods == 30
+    )
+    error_message = "Reserve two system nodes for critical add-ons and provide two untainted, same-sized apps nodes on the AKS subnet."
+  }
+
+  assert {
+    condition = (
+      azurerm_kubernetes_cluster.lab.kubernetes_version == var.kubernetes_version &&
+      azurerm_kubernetes_cluster.lab.default_node_pool[0].orchestrator_version == var.kubernetes_version &&
+      azurerm_kubernetes_cluster_node_pool.apps.orchestrator_version == var.kubernetes_version &&
+      azurerm_kubernetes_cluster_node_pool.apps.upgrade_settings[0].max_surge == "1"
+    )
+    error_message = "Both pools must follow the workshop Kubernetes version and the apps pool must allow one surge node."
+  }
+}
+
 run "subnet_network_security" {
   command = apply
 

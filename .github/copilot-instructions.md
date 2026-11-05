@@ -9,7 +9,7 @@ and `docs/cleanup.md` defines the dependency-sensitive teardown.
 Lab 1 uses a disposable portal-created cluster. Labs 2-7 share one
 Terraform-managed cluster, VNet, and local state. Lab 2 deliberately starts on
 an older **still-supported**, regionally available Kubernetes patch and upgrades
-the control plane and node pool through Terraform. Do not hard-code an expiring
+the control plane and both node pools through Terraform. Do not hard-code an expiring
 Kubernetes release or replace the cluster between labs.
 
 `infrastructure/` is one Terraform root configuration, split by concern.
@@ -18,7 +18,7 @@ because setup explicitly registers the providers.
 
 | Lab | Ownership boundary |
 | --- | --- |
-| 2 | Terraform owns AKS, cluster identity, VNet, delegated subnets, NSGs, and subnet roles. |
+| 2 | Terraform owns AKS, two system nodes reserved with `CriticalAddonsOnly=true:NoSchedule`, two untainted User-pool nodes in `apps`, cluster identity, VNet, delegated subnets, NSGs, and subnet roles. Both pools share `node_vm_size` and `kubernetes_version`. |
 | 3 | `enable_agc` adds Terraform-managed controller identity, federation, and roles. Helm installs ALB Controller; Kubernetes Gateway/HTTPRoute/ApplicationLoadBalancer resources drive controller-managed AGC. This is not AGIC. |
 | 4 | `enable_blob_storage` adds Terraform-managed private, keyless Blob Storage, workload identity, federation, and container-scoped reader/uploader roles. CLI seeds and reads blob data. |
 | 5 | Kubernetes manifests provision the PVC/PV-backed Azure Disk through AKS CSI, not a Terraform disk resource. |
@@ -75,8 +75,7 @@ run workshop provisioning or teardown commands just to validate documentation.
   lab ID. Preserve existing tfvars inputs and the upgraded Kubernetes version
   when enabling later flags.
 - Optional Terraform resources use `count` and `[0]` addresses, with null outputs
-  while disabled. Existing CLI-created resources must be imported according to
-  `docs/terraform-migration.md`, not recreated.
+  while disabled.
 - Keep `apps/demo/manifest.yaml` namespace-neutral and its Service ClusterIP in
   Git. Labs 1-3 deploy it into `demo` and patch exposure locally; Lab 6 reconciles
   the same source into separate `gitops-demo`. Keep both GitOps repository URLs,

@@ -315,9 +315,10 @@ including compatibility with the Lab 3 controller and Lab 6 extension. AKS
 availability rolls out regionally; do not copy a stale version from an old
 workshop. Lab 1 can keep the portal's default version.
 
-Lab 2 requests **two `Standard_D4s_v5` nodes**: eight vCPUs in total. Reserve quota
-and capacity for at least one temporary upgrade node (four more vCPUs), for
-**12 vCPUs during the upgrade**. Check both the regional vCPU quota and the
+Lab 2 requests **four `Standard_D4s_v5` nodes**: two in the `system` pool and two
+in the `apps` pool, for 16 vCPUs in total. Each pool allows one temporary upgrade
+node. Reserve quota and capacity for two surge nodes (eight more vCPUs), for
+**24 vCPUs including upgrade headroom**. Check both the regional vCPU quota and the
 VM-family quota. AKS system nodes require at least 4 vCPUs and 4 GiB of memory;
 B-series VMs are not supported. See the
 [system node pool requirements](https://learn.microsoft.com/azure/aks/use-system-pools).
@@ -325,7 +326,7 @@ Ask the instructor for an available compatible size if this SKU is restricted;
 do not repeatedly create clusters hoping to bypass a quota error.
 
 Make a cost estimate with the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/).
-Include two worker VMs, OS disks, load balancer/public IP resources, AGC, a small
+Include four worker VMs, OS disks, load balancer/public IP resources, AGC, a small
 managed data disk, Blob Storage, Managed Grafana Standard, Log Analytics
 ingestion/retention, and managed Prometheus ingestion/queries. Monitoring has
 ongoing charges even when you are not viewing dashboards. Budget alerts notify;

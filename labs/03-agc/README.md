@@ -108,10 +108,6 @@ AGC resources are created in the AKS **node resource group** by ALB Controller,
 not managed by Terraform. Keep `enable_agc = true` until the controller has
 deleted AGC during [Final cleanup](../../docs/cleanup.md).
 
-**Already completed the CLI-based version of this lab?** Import the existing
-identity, credential, and three role assignments before applying this change;
-see the migration steps below. Do not delete a working controller identity.
-
 </details>
 
 ## 3. Install ALB Controller

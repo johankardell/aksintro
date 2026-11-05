@@ -94,13 +94,14 @@ resource "azurerm_kubernetes_cluster" "lab" {
   }
 
   default_node_pool {
-    name                        = "system"
-    node_count                  = 2
-    vm_size                     = var.node_vm_size
-    orchestrator_version        = var.kubernetes_version
-    vnet_subnet_id              = azurerm_subnet.aks.id
-    max_pods                    = 30
-    temporary_name_for_rotation = "systemtemp"
+    name                         = "system"
+    node_count                   = 2
+    vm_size                      = var.node_vm_size
+    orchestrator_version         = var.kubernetes_version
+    vnet_subnet_id               = azurerm_subnet.aks.id
+    max_pods                     = 30
+    only_critical_addons_enabled = true
+    temporary_name_for_rotation  = "systemtemp"
 
     upgrade_settings {
       max_surge = "1"
@@ -124,4 +125,20 @@ resource "azurerm_kubernetes_cluster" "lab" {
     azurerm_role_assignment.cluster_subnet,
     azurerm_subnet_network_security_group_association.aks,
   ]
+}
+
+resource "azurerm_kubernetes_cluster_node_pool" "apps" {
+  name                  = "apps"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.lab.id
+  mode                  = "User"
+  node_count            = 2
+  node_taints           = []
+  vm_size               = var.node_vm_size
+  orchestrator_version  = var.kubernetes_version
+  vnet_subnet_id        = azurerm_subnet.aks.id
+  max_pods              = 30
+
+  upgrade_settings {
+    max_surge = "1"
+  }
 }

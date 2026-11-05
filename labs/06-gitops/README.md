@@ -24,8 +24,9 @@ and you remain responsible for their configuration, access, and applications.
 This is not a separate externally hosted Argo CD control plane.
 
 The default extension configuration is HA and requires four nodes. We explicitly
-disable Redis HA for this two-node learning cluster. This is not the production
-HA configuration.
+disable Redis HA because this learning cluster has only two application nodes;
+the other two nodes are reserved for critical system add-ons. This is not the
+production HA configuration.
 
 Two identity paths are involved:
 
@@ -171,8 +172,6 @@ printf 'argocd_sso_client_id = "%s"\nargocd_group_object_id = "%s"\n' \
 Add those values and `enable_argocd = true` to the existing
 `infrastructure/terraform.tfvars`; preserve all earlier inputs. Terraform
 derives the OIDC tenant from the selected Azure provider credentials.
-If you already installed the CLI-based extension, follow
-[Terraform migration](../../docs/terraform-migration.md) first.
 
 ```bash
 terraform -chdir=infrastructure init

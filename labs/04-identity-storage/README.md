@@ -59,9 +59,6 @@ data roles. **Your signed-in user** gets permission to upload the sample file;
 the application gets read-only access. Azure Contributor alone does not grant
 Blob data access.
 
-If you already completed the CLI-based lab, follow
-[Terraform migration](../../docs/terraform-migration.md) before applying.
-
 <details>
 <summary>Solution: provision with Terraform, then seed the sample blob</summary>
 

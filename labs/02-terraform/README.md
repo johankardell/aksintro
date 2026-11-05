@@ -12,7 +12,7 @@ Lab 1 cluster deleted, permission to create resources and assign Azure roles.
 
 ```text
 VNet: 10.0.0.0/16
-  aks subnet: 10.0.0.0/22 -> two AKS nodes and Azure CNI pod IPs
+  aks subnet: 10.0.0.0/22 -> two system nodes, two apps nodes, and Azure CNI pod IPs
   agc subnet: 10.0.4.0/24 -> reserved/delegated for Lab 3
 
 Kubernetes Service range: 10.2.0.0/16 (virtual IPs, not a VNet subnet)
@@ -31,7 +31,7 @@ Do not delete state while the resources still exist.
 Inspect the files in [`infrastructure/`](../../infrastructure/):
 
 - `main.tf`: provider, resource group, VNet, two subnets, cluster identity,
-  subnet role assignment, and AKS.
+  subnet role assignment, AKS system pool, and a separate `apps` User pool.
 - `network.tf`: an NSG for each subnet and its association; public HTTP for the
   Lab 2 demo Service and public HTTP/HTTPS for the AGC frontend.
 - `agc.tf`: optional Lab 3 ALB Controller identity, federation, and permissions;
@@ -64,9 +64,14 @@ is limited to TCP port 80 on AKS for the Lab 2 public demo Service, and TCP port
 AGC associations created on or after April 23, 2026 enforce inbound NSG rules,
 so a default-only NSG blocks the public frontend.
 
-Two small nodes leave room for the later controllers and applications. OIDC and
-Workload Identity are enabled now because ALB Controller needs them in Lab 3;
-you will explore application identities in Lab 4.
+Both pools contain two nodes and use the same `node_vm_size`. System-pool nodes
+are workers too, but Terraform's `only_critical_addons_enabled = true` applies
+`CriticalAddonsOnly=true:NoSchedule` to reserve them for critical add-ons.
+Ordinary workloads without that toleration schedule onto the untainted `apps`
+pool. Do not add a matching toleration to the demo workloads.
+
+OIDC and Workload Identity are enabled now because ALB Controller needs them in
+Lab 3; you will explore application identities in Lab 4.
 
 The AzureRM provider's automatic resource-provider registration is disabled.
 The setup guide explicitly registers the providers, making permissions and
@@ -194,13 +199,27 @@ export AKS_NAME=$(terraform -chdir=infrastructure output -raw cluster_name)
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 kubectl config current-context
 kubectl get nodes -o wide
+kubectl get nodes -L kubernetes.azure.com/agentpool,kubernetes.azure.com/mode
+kubectl get nodes -l kubernetes.azure.com/agentpool=system \
+  -o custom-columns='NAME:.metadata.name,TAINTS:.spec.taints'
 az aks show --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" \
   --query '{network:networkProfile.networkPlugin,subnet:agentPoolProfiles[0].vnetSubnetId,oidc:oidcIssuerProfile.enabled,workloadIdentity:securityProfile.workloadIdentity.enabled}' \
   --output yaml
 ```
 
-Expect two `Ready` nodes, network plugin `azure`, your AKS subnet ID, and both
-identity features enabled. Compare the node IPs with `10.0.0.0/22`.
+Expect four `Ready` nodes: two in `system` (mode `system`) and two in `apps`
+(mode `user`). The system nodes must show `CriticalAddonsOnly=true:NoSchedule`.
+Expect network plugin `azure`, your AKS subnet ID, and both identity features
+enabled. Compare the node IPs with `10.0.0.0/22`.
+
+If updating an existing workshop cluster, review the plan for the new `apps`
+pool and the system-pool taint change; reject cluster replacement. Changing this
+setting may rotate system nodes. `NoSchedule` blocks new ordinary pods but does
+not evict existing ones. After the `apps` nodes are ready, inspect pod placement
+with `kubectl get pods --all-namespaces -o wide`. If the existing demo remains on
+system nodes, run `kubectl -n demo rollout restart deployment/demo` and wait for
+its rollout. Recreate other workshop application pods through their controllers
+as needed; do not delete unfamiliar system pods or add broad tolerations.
 
 </details>
 
@@ -231,7 +250,8 @@ curl "http://${DEMO_IP}"
 ```
 
 Expect `Hello from AKS! Version 1`. Pod IPs should be in the AKS subnet, while
-the Service's internal virtual IP is in `10.2.0.0/16`.
+the Service's internal virtual IP is in `10.2.0.0/16`. Compare the pod's `NODE`
+with the node-pool labels above: the demo should run on `apps`, not `system`.
 
 </details>
 
@@ -296,7 +316,7 @@ disruption policy.
 </details>
 
 Edit **only** `kubernetes_version` in `infrastructure/terraform.tfvars` to the
-selected target. Both the control plane and default node pool reference that
+selected target. The control plane, system pool, and `apps` pool reference that
 variable. Do not run a separate `az aks upgrade`: Terraform remains the source
 of truth.
 
@@ -307,8 +327,8 @@ of truth.
 terraform -chdir=infrastructure plan -out=upgrade.tfplan
 ```
 
-Inspect the plan: expect an **in-place update** to the AKS version and default
-node-pool version, not cluster destruction or replacement. Stop if it proposes
+Inspect the plan: expect **in-place updates** to the AKS version and both
+node-pool versions, not cluster destruction or replacement. Stop if it proposes
 replacement and identify the unrelated input change.
 
 ```bash
@@ -322,11 +342,11 @@ curl "http://${DEMO_IP}"
 terraform -chdir=infrastructure plan
 ```
 
-Expect the **control plane and both nodes** on the target version, both nodes
+Expect the **control plane and all four nodes** on the target version, all nodes
 `Ready`, the expected HTTP response, and a no-change Terraform plan. The cluster
 name and resource ID remain the same. Upgrades can take 15-30 minutes or longer.
-The configured surge of one allows an extra node during rotation; quota and
-subnet space must cover it.
+Each pool's configured surge of one allows an extra node during its rotation;
+quota and subnet space must cover the upgrade headroom.
 
 Update `K8S_VERSION` in your local `.workshop/env.sh` to the target version so
 you do not accidentally generate old inputs later. Keep the upgraded
@@ -337,10 +357,10 @@ value to the old version.
 
 ## Checkpoint
 
-You can connect to the cluster with `kubectl`, verify that both nodes are
-`Ready`, explain the two subnets and Service range, reach the demo, and verify
-an in-place upgrade of the control plane **and** node pool. Keep the state and
-upgraded cluster.
+You can connect to the cluster with `kubectl`, verify that all four nodes are
+`Ready`, explain the two subnets and Service range, and confirm the demo runs on
+`apps` while system nodes are tainted. You can verify an in-place upgrade of the
+control plane **and both node pools**. Keep the state and upgraded cluster.
 
 ## Troubleshooting
 

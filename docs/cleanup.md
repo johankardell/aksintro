@@ -10,9 +10,7 @@ Run from the repository root. Perform only the sections for labs you actually
 completed. If an object is already gone, verify that fact and skip its command;
 do not hide unexpected authorization or dependency errors.
 
-If you completed an older CLI-based version of Labs 4, 6, or 7, follow
-[Terraform migration](terraform-migration.md) before cleanup. Do not manually
-delete resources that Terraform now owns.
+Do not manually delete resources owned by Terraform.
 
 ## 1. Recover the correct cluster settings
 

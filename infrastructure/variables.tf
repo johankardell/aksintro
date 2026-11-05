@@ -20,7 +20,7 @@ variable "location" {
 }
 
 variable "node_vm_size" {
-  description = "Available AKS system-pool VM size. Check regional and VM-family quota."
+  description = "VM size shared by the system and apps pools. Must support AKS system nodes; check regional and VM-family quota."
   type        = string
   default     = "Standard_D4s_v5"
 }
@@ -113,7 +113,7 @@ variable "enable_monitoring_resources" {
 }
 
 variable "grafana_major_version" {
-  description = "Lab 7 Managed Grafana major version. Preserve the existing version when importing a CLI-created instance."
+  description = "Lab 7 Managed Grafana major version. Check availability in the training region."
   type        = string
   default     = "12"
 

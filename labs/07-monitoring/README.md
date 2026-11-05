@@ -113,8 +113,7 @@ Add `enable_monitoring_resources = true` and the printed `attendee_object_id`
 to the existing `infrastructure/terraform.tfvars`. If Lab 4 already set the
 user ID, verify it rather than adding a duplicate variable.
 Leave `log_analytics_workspace_id` unset for now: creating destinations does
-**not** enable collection. If you already created these resources with CLI,
-follow [Terraform migration](../../docs/terraform-migration.md) first.
+**not** enable collection.
 
 ```bash
 terraform -chdir=infrastructure init
