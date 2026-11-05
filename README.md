@@ -28,6 +28,22 @@ Exercises have **collapsed solution blocks**. Try the task first, then expand
 the solution for commands and explanations. Run the commands in order; the
 solutions are also the worked path through each lab.
 
+## Optional bonus: compare AKS Automatic
+
+After Lab 1, create a separate, disposable AKS Automatic cluster and deploy
+[`apps/demo/manifest.yaml`](apps/demo/manifest.yaml). Explore the running
+workload and cluster defaults, then compare the setup and operational choices
+with Lab 1's standard AKS cluster and Lab 2's Terraform-managed cluster. Discuss
+which decisions AKS Automatic makes for you and where standard AKS offers more
+direct control. Use the
+[AKS Automatic quickstart](https://learn.microsoft.com/azure/aks/automatic/quick-automatic-managed-network)
+for current creation, connection, and cleanup instructions.
+
+This exercise is separate from the seven-lab path: use its own resource group,
+review the estimated charges and quota before creating it, and delete the
+cluster when finished. Do not use it for Labs 2-7, which rely on the shared
+Terraform-managed cluster.
+
 ## How the clusters are reused
 
 ```text
