@@ -1,0 +1,30 @@
+name: Validate workshop
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+      - name: Check documentation and cross-file invariants
+        run: python .github/scripts/check_repo.py
+      - name: Initialize Terraform without a backend
+        run: terraform -chdir=infrastructure init -backend=false
+      - name: Check Terraform formatting
+        run: terraform -chdir=infrastructure fmt -check -recursive
+      - name: Validate Terraform
+        run: terraform -chdir=infrastructure validate
+      - name: Run mocked Terraform tests
+        run: terraform -chdir=infrastructure test

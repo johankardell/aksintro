@@ -16,6 +16,11 @@ needed.** Lab 5's persistent data stays in `storage-demo`; this lab deploys a
 fresh copy of the HTTP demo in **`gitops-demo`**. Labs 2-3's `demo` namespace is
 not adopted, overwritten, or pruned.
 
+There are two milestones: first, prepare the identity and access configuration
+needed for sign-in; then, learn GitOps by deploying, changing, and reconciling
+the application. The Entra steps are platform setup, not the GitOps behavior
+you are here to observe.
+
 ## What is managed, and what you still configure
 
 The Azure extension type is **`Microsoft.ArgoCD`**. Microsoft manages the
@@ -71,6 +76,11 @@ examples used different keys.
 
 </details>
 
+### Milestone 1: prepare sign-in and access
+
+The next three steps configure Entra and the managed extension. Once those are
+ready, the main GitOps exercise begins with the AppProject and Application.
+
 ## 2. Create the Entra application and a lab access group
 
 Use a single-tenant app with the **Web** redirect URI
@@ -110,8 +120,13 @@ the callback, single-tenant setting, security-group claims, and your membership.
 The service principal appears under **Enterprise applications**.
 
 On resuming, `source .workshop/entra.env`; do not create duplicate apps or
-groups. If the instructor pre-created these objects, put their app client ID
-and group object ID into that local file and skip creation commands.
+groups. For a class with restricted Entra permissions, the instructor can
+pre-create the app, service principal, security group, and matching federation.
+Put the app client ID and group object ID in `.workshop/entra.env` and skip the
+app/group creation commands in this step. If the federation was also
+pre-created, inspect it and skip only the creation command in step 3. The
+instructor must confirm that the redirect URI, group claim, delegated
+permission, and federated subject match this lab.
 
 We do not require enterprise-application group assignment or its licensing.
 Sign-in alone does not grant application access: the Argo CD role mapping in
@@ -229,6 +244,12 @@ The built-in Argo CD admin login is disabled; Kubernetes administrator access
 is still available for troubleshooting.
 
 </details>
+
+### Milestone 2: deploy and reconcile from Git
+
+The remaining steps are the GitOps learning path: establish the allowed
+repository and namespace, perform a manual sync, change the Git source, and
+observe reconciliation.
 
 ## 5. Bootstrap the scoped project and sample Application
 
@@ -395,6 +416,8 @@ storage without a data-retention plan.
 You can sign in using Entra ID without a local Argo CD password, deploy from
 your fork, trace a running version to its Git commit, and observe self-healing.
 The persistent workload from Lab 5 remains untouched.
+Explain why the replica change is reverted and how the Git revision relates to
+the running workload.
 
 ## Troubleshooting
 
@@ -428,6 +451,8 @@ access to bypass an SSO configuration error.
 
 Stop both local port-forwards with `Ctrl+C`. They do not stop Azure billing.
 Keep the cluster and continue to [Lab 7: managed monitoring](../07-monitoring/README.md).
+Lab 7 will observe this GitOps workload alongside the earlier `demo` and disk
+workload without changing their ownership.
 If you are done, follow [Final cleanup](../../docs/cleanup.md), including the app
 registration and security group: **Entra objects are not deleted with an Azure
 resource group**.

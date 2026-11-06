@@ -5,6 +5,9 @@
 **Goal:** Put Application Gateway for Containers (AGC) in front of the existing
 demo using Kubernetes Gateway API.
 
+This continues the Lab 2 web-demo story: the Deployment and Service stay the
+same while the public entry point changes from a LoadBalancer Service to AGC.
+
 **Time:** 60-90 minutes. **Prerequisites:** upgraded Lab 2 cluster and its Terraform
 state, Terraform, Helm 3, AGC providers registered, and permission to assign roles.
 No new cluster is needed.
@@ -260,6 +263,8 @@ credentials or sensitive data in this exercise.
 
 The demo works through AGC with a ClusterIP Service. You can trace Gateway ->
 HTTPRoute -> Service -> pods, and identify the controller's separate identity.
+Next, leave this demo and its route in place while a separate workload learns
+to access Azure data through its own identity.
 
 ## Troubleshooting
 

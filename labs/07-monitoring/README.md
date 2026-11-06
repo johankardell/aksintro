@@ -267,6 +267,12 @@ In the Azure portal, open your AKS cluster and select **Monitoring -> Insights**
 range to the last 30 minutes, find the `monitoring-demo` namespace under
 controllers/containers, and inspect pod health and resource usage.
 
+Then switch the namespace filter to `demo`, `storage-demo`, or `gitops-demo`
+to revisit workloads created in earlier labs. Their owners remain unchanged:
+Argo CD still manages only `gitops-demo`, and the disk-backed app still uses
+its Lab 5 claim. The following log query intentionally stays scoped to the
+dedicated telemetry sample.
+
 Then open **Logs** for the lab Log Analytics workspace and run a query against
 `ContainerLogV2`.
 
@@ -395,6 +401,8 @@ CPU/memory, crash system pods, or generate a large volume of billable logs.
 You can find the sample in Container Insights, retrieve its stdout using KQL,
 open a built-in Managed Grafana dashboard with Entra sign-in, query managed
 Prometheus using PromQL, and observe the replica change.
+Explain why the log and metric queries use different workspaces and query
+languages, and identify one earlier workload visible in the cluster dashboards.
 
 ## Troubleshooting
 

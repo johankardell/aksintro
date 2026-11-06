@@ -88,13 +88,14 @@ variables {
   argocd_sso_client_id                = ""
   argocd_group_object_id              = ""
   storage_account_name                = null
+  allow_storage_policy_exemption      = false
   grafana_major_version               = "12"
   log_analytics_workspace_id          = null
   defender_log_analytics_workspace_id = null
 }
 
 run "application_pool_and_system_isolation" {
-  command = plan
+  command = apply
 
   variables {
     node_vm_size       = "Standard_D8as_v7"
@@ -195,7 +196,7 @@ run "later_labs_disabled" {
 }
 
 run "blob_storage_and_least_privilege" {
-  command = plan
+  command = apply
 
   variables {
     enable_blob_storage = true
@@ -207,6 +208,7 @@ run "blob_storage_and_least_privilege" {
       azurerm_storage_account.blob[0].shared_access_key_enabled == false &&
       azurerm_storage_account.blob[0].allow_nested_items_to_be_public == false &&
       azurerm_storage_account.blob[0].min_tls_version == "TLS1_2" &&
+      !contains(keys(azurerm_storage_account.blob[0].tags), "SecurityControl") &&
       azurerm_storage_container.labdata[0].container_access_type == "private" &&
       azurerm_storage_container.labdata[0].storage_account_id == azurerm_storage_account.blob[0].id &&
       azurerm_role_assignment.blob_reader[0].scope == azurerm_storage_container.labdata[0].id &&
@@ -232,8 +234,23 @@ run "blob_storage_and_least_privilege" {
   }
 }
 
+run "blob_storage_policy_exemption_is_opt_in" {
+  command = apply
+
+  variables {
+    enable_blob_storage            = true
+    attendee_object_id             = "00000000-0000-0000-0000-000000000006"
+    allow_storage_policy_exemption = true
+  }
+
+  assert {
+    condition     = azurerm_storage_account.blob[0].tags["SecurityControl"] == "Ignore"
+    error_message = "Add the policy-exemption tag only when explicitly enabled for an approved training subscription."
+  }
+}
+
 run "argocd_extension_and_identity_separation" {
-  command = plan
+  command = apply
 
   variables {
     enable_argocd          = true
@@ -289,7 +306,7 @@ run "defender_does_not_enable_lab7_collection" {
 }
 
 run "monitoring_destinations_do_not_enable_collection" {
-  command = plan
+  command = apply
 
   variables {
     enable_monitoring_resources = true
@@ -315,7 +332,7 @@ run "monitoring_destinations_do_not_enable_collection" {
 }
 
 run "all_labs_with_onboarded_collection" {
-  command = plan
+  command = apply
 
   variables {
     enable_agc                  = true
