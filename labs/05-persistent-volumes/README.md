@@ -5,6 +5,9 @@
 **Goal:** Mount an Azure Disk in a web application and prove that its data
 survives pod replacement.
 
+This contrasts with Lab 4: Blob access used an identity and Azure API, while
+this workload gets a filesystem through a Kubernetes volume claim.
+
 **Time:** 30-45 minutes. **Prerequisites:** the existing Lab 2 cluster and setup
 completed. Keep earlier labs running; no new cluster, Storage account,
 application identity, or role assignment is needed.
@@ -133,6 +136,8 @@ If you replace the pod again, restart the port-forward once the new pod is ready
 You can explain the PVC -> PV -> Azure Disk relationship and have preserved an
 edited page across pod replacement. **Persistent storage is not a backup**:
 this exercise does not protect against disk deletion or data corruption.
+Explain which Kubernetes object requested the disk and why keeping the PVC does
+not protect its contents if the disk itself is deleted.
 
 ## Troubleshooting
 

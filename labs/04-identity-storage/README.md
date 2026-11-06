@@ -5,6 +5,9 @@
 **Goal:** Use an application identity to read a private blob without a password,
 and confirm that read-only access does not permit writes.
 
+The Lab 3 demo remains routed through AGC. This separate CLI pod isolates the
+identity-to-Azure authorization path without changing that web workload.
+
 **Time:** 45-60 minutes. **Prerequisites:** Lab 2 cluster and Terraform state,
 preferably Lab 3 completed, Azure role-assignment permissions, and permission
 to seed Blob Storage. No new cluster, SDK installation, or container build is
@@ -70,8 +73,11 @@ printf 'attendee_object_id = "%s"\n' "$USER_OBJECT_ID"
 ```
 
 Add that value and `enable_blob_storage = true` to the existing
-`infrastructure/terraform.tfvars`, preserving all earlier inputs. The default
-account name is stable and derived from the subscription and attendee prefix.
+`infrastructure/terraform.tfvars`, preserving all earlier inputs. Only add
+`allow_storage_policy_exemption = true` if the instructor confirms that the
+training subscription requires the documented policy exemption. Otherwise,
+leave it unset. The default account name is stable and derived from the
+subscription and attendee prefix.
 If Azure reports a global name collision, set `storage_account_name` to another
 valid, unique name before retrying. Do not change an existing account's name
 after it contains data: that would replace it.
@@ -104,9 +110,15 @@ object ID, have the instructor supply it. An instructor can seed the blob if
 you cannot upload it; do not grant the application write access.
 
 On resuming, recover both values with the same Terraform output commands;
-`.workshop/storage.env` is no longer needed. Terraform uses the Resource Manager
-API to create the container, so account keys stay disabled. The blob's contents
-are deliberately seeded with CLI, not stored in Terraform state.
+Terraform uses the Resource Manager API to create the container, so account
+keys stay disabled. The blob's contents are deliberately seeded with CLI, not
+stored in Terraform state.
+
+The storage account has a lab-specific `SecurityControl = "Ignore"` tag only
+when the instructor explicitly enables the approved subscription policy
+exception. It is not a general Azure requirement. Do not enable that exception
+to bypass an unapproved security policy; ask the instructor to confirm the
+training subscription's policy and exemption process.
 
 </details>
 
@@ -241,6 +253,8 @@ This expected denial is part of the exercise, not a lab setup error.
 
 You have read a private blob without stored credentials, demonstrated a denied
 write, and distinguished the application identity from the cluster identity.
+Explain why a successful federated login does not itself grant permission to
+read the blob, and why the attempted write should fail.
 
 ## Troubleshooting
 
@@ -255,6 +269,8 @@ write, and distinguished the application identity from the cluster identity.
 
 Keep the identity, Blob Storage, and cluster, and continue to
 [Lab 5: persistent volumes with Azure Disks](../05-persistent-volumes/README.md).
+The next lab contrasts this Azure API authorization with a filesystem mounted
+from an Azure Disk.
 Use [Final cleanup](../../docs/cleanup.md) only when you are finished.
 
 Reference: [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster).

@@ -34,11 +34,18 @@ change; the following settings matter more than matching a screenshot.
 1. Select your training subscription.
 2. Create a resource group named `rg-aksintro-YOUR-LAB-ID-portal`.
 3. Name the cluster `aksintro-YOUR-LAB-ID-portal`.
-4. Use the agreed training region and the default supported Kubernetes version.
+4. Use **Sweden Central (`swedencentral`)** unless the instructor agreed on
+   another region. Select **Kubernetes 1.35.1** if it is still available with
+   standard support there. Otherwise, select the oldest available supported
+   patch version at or above **1.35** (minimum `1.35.0`), excluding previews and
+   LTS-only versions. Use the `K8S_VERSION` selected during
+   [setup](../../docs/00-setup.md#5-prepare-azure-providers-extensions-and-quota),
+   not the portal default. Lab 2 starts on the same version and upgrades it
+   through Terraform.
 5. Select a development/test preset and the **Free** control-plane pricing tier.
 6. Use a Linux system node pool with two nodes. Select an available
    system-pool-compatible VM with at least 4 vCPUs and 4 GiB of memory, such as
-   `Standard_D4s_v5` (4 vCPUs / 16 GiB). Do not use a B-series VM.
+   `Standard_D4as_v7` (4 vCPUs / 16 GiB) if available. Do not use a B-series VM.
 7. Keep the default managed identity and default networking. Use a **public**
    API endpoint. Do not add AGC, private endpoints, or optional integrations.
 8. If shown, select Kubernetes RBAC with local accounts for this introductory

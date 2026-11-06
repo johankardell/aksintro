@@ -60,7 +60,7 @@ variable "enable_blob_storage" {
 }
 
 variable "storage_account_name" {
-  description = "Optional existing or instructor-selected Lab 4 account name. Null uses a stable subscription/prefix-derived name."
+  description = "Optional unique, instructor-selected name for the new Lab 4 account. Null uses a stable subscription/prefix-derived name."
   type        = string
   default     = null
 
@@ -68,6 +68,12 @@ variable "storage_account_name" {
     condition     = var.storage_account_name == null ? true : can(regex("^[a-z0-9]{3,24}$", var.storage_account_name))
     error_message = "Storage account names must contain 3-24 lowercase letters or digits."
   }
+}
+
+variable "allow_storage_policy_exemption" {
+  description = "Lab 4 only: add the subscription-specific SecurityControl=Ignore tag when an instructor-approved Azure Policy exemption requires it."
+  type        = bool
+  default     = false
 }
 
 variable "attendee_object_id" {

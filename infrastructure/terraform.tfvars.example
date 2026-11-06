@@ -2,7 +2,13 @@ subscription_id    = "YOUR-SUBSCRIPTION-ID"
 prefix             = "aksintro-jk01"
 location           = "swedencentral"
 node_vm_size       = "Standard_D4as_v7"
-kubernetes_version = "REPLACE-WITH-OLDER-SUPPORTED-PATCH-VERSION"
+# Verify 1.35.1 is still available with standard support in the region before using it.
+# Otherwise choose the oldest available supported patch >=1.35.0, excluding previews/LTS-only.
+# Confirm a newer supported upgrade is available for Lab 2.
+kubernetes_version = "1.35.1"
+
+# Set true only when the instructor confirms the training subscription's approved policy exemption.
+# allow_storage_policy_exemption = true
 
 # Set to true when starting Lab 3; keep enabled until AGC cleanup completes.
 enable_agc = false
@@ -16,7 +22,7 @@ enable_monitoring_resources = false
 # attendee_object_id = "YOUR-USER-OBJECT-ID"
 
 # Optional for Lab 4; otherwise a stable account name is generated.
-# storage_account_name = "YOUR-EXISTING-OR-UNIQUE-ACCOUNT-NAME"
+# storage_account_name = "YOUR-UNIQUE-ACCOUNT-NAME"
 
 # Required for Lab 6 after creating the Entra app and group outside Terraform.
 # argocd_sso_client_id   = "YOUR-APP-CLIENT-ID"
@@ -24,9 +30,3 @@ enable_monitoring_resources = false
 
 # Lab 7: copy the output here only AFTER CLI monitoring onboarding.
 # log_analytics_workspace_id = "YOUR-WORKSPACE-RESOURCE-ID"
-
-# Optional: preserve Defender for Containers if enabled in the training subscription.
-# defender_log_analytics_workspace_id = "YOUR-EXISTING-DEFENDER-WORKSPACE-RESOURCE-ID"
-
-# Preserve the installed major version when importing an older Grafana instance.
-# grafana_major_version = "11"

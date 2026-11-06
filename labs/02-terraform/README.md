@@ -8,6 +8,14 @@ demo again, and upgrade an older supported Kubernetes version.
 **Time:** 90-120 minutes. **Prerequisites:** setup completed, Terraform installed,
 Lab 1 cluster deleted, permission to create resources and assign Azure roles.
 
+Start with new Terraform-managed resources; do not reuse a cluster from an
+earlier workshop. The recommended Kubernetes version is **1.35.1** if it is
+still available with standard support in **Sweden Central (`swedencentral`)**.
+Otherwise, use the oldest available supported patch version at or above
+**1.35** (minimum `1.35.0`), excluding previews and LTS-only versions. Use the
+[setup version checks](../../docs/00-setup.md#5-prepare-azure-providers-extensions-and-quota)
+to confirm a newer supported upgrade is available before provisioning.
+
 ## What you are building
 
 ```text
@@ -79,8 +87,6 @@ registration failures easier to understand.
 
 AzureRM **4.81 or newer within major version 4** is required for the later
 labs' Resource Manager storage-container API and current Grafana configuration.
-If an older local lock file prevents initialization, run
-`terraform -chdir=infrastructure init -upgrade` and review the provider change.
 
 </details>
 
@@ -99,15 +105,16 @@ cat > infrastructure/terraform.tfvars <<EOF
 subscription_id    = "$SUBSCRIPTION_ID"
 prefix             = "aksintro-$LAB_ID"
 location           = "$LOCATION"
-node_vm_size       = "Standard_D4s_v5"
+node_vm_size       = "$NODE_VM_SIZE"
 kubernetes_version = "$K8S_VERSION"
 EOF
 ```
 
-If the instructor selected another VM size, change `node_vm_size` before
-planning. `K8S_VERSION` must be the older supported patch selected during setup,
-not the placeholder. Keep the naming, region, and networking unchanged for Labs
-2-6; you will deliberately change the version later in this lab.
+`NODE_VM_SIZE` must match the value selected during setup and confirmed in the
+region. `K8S_VERSION` must be `1.35.1` if still available with standard support,
+or the oldest eligible fallback at or above `1.35` selected during setup.
+Keep the naming, region, and networking unchanged for Labs 2-7; you will
+deliberately change the version later in this lab.
 
 </details>
 
@@ -115,46 +122,6 @@ not the placeholder. Keep the naming, region, and networking unchanged for Labs
 
 Initialize Terraform, check formatting and configuration, then save a plan.
 Read the plan before applying it. Do not use `-auto-approve` for this exercise.
-
-**Existing deployment with governance-created NSGs?** Import both NSGs and
-their subnet associations into the existing state before planning. Do not
-detach the NSGs or create another state directory.
-
-<details>
-<summary>Solution: adopt existing subnet NSGs</summary>
-
-Recover the subnet IDs and inspect their attached NSGs:
-
-```bash
-export AKS_SUBNET_ID=$(terraform -chdir=infrastructure output -raw aks_subnet_id)
-export AGC_SUBNET_ID=$(terraform -chdir=infrastructure output -raw agc_subnet_id)
-export AKS_NSG_ID=$(az network vnet subnet show --ids "$AKS_SUBNET_ID" \
-  --query networkSecurityGroup.id -o tsv)
-export AGC_NSG_ID=$(az network vnet subnet show --ids "$AGC_SUBNET_ID" \
-  --query networkSecurityGroup.id -o tsv)
-az network nsg show --ids "$AKS_NSG_ID" --query '{name:name,rules:securityRules}' -o json
-az network nsg show --ids "$AGC_NSG_ID" --query '{name:name,rules:securityRules}' -o json
-```
-
-Expect names `<prefix>-vnet-aks-nsg-<location>` and
-`<prefix>-vnet-agc-nsg-<location>`, matching `network.tf`. If no NSG is attached,
-skip its imports and let Terraform create it. If names or existing custom rules
-differ, reconcile the configuration first; do not replace an NSG or overwrite
-governance rules unintentionally. Import only resources not already in state:
-
-```bash
-terraform -chdir=infrastructure import azurerm_network_security_group.aks "$AKS_NSG_ID"
-terraform -chdir=infrastructure import azurerm_network_security_group.agc "$AGC_NSG_ID"
-terraform -chdir=infrastructure import azurerm_subnet_network_security_group_association.aks "$AKS_SUBNET_ID"
-terraform -chdir=infrastructure import azurerm_subnet_network_security_group_association.agc "$AGC_SUBNET_ID"
-```
-
-Then follow the plan/apply steps below. For an otherwise unchanged existing
-deployment with default-only NSGs, expect two in-place NSG updates, no subnet or
-cluster replacement, and no new NSGs. Coordinate with the governance owner if
-automation continually overwrites the rules.
-
-</details>
 
 <details>
 <summary>Solution: Terraform workflow</summary>
@@ -211,15 +178,6 @@ Expect four `Ready` nodes: two in `system` (mode `system`) and two in `apps`
 (mode `user`). The system nodes must show `CriticalAddonsOnly=true:NoSchedule`.
 Expect network plugin `azure`, your AKS subnet ID, and both identity features
 enabled. Compare the node IPs with `10.0.0.0/22`.
-
-If updating an existing workshop cluster, review the plan for the new `apps`
-pool and the system-pool taint change; reject cluster replacement. Changing this
-setting may rotate system nodes. `NoSchedule` blocks new ordinary pods but does
-not evict existing ones. After the `apps` nodes are ready, inspect pod placement
-with `kubectl get pods --all-namespaces -o wide`. If the existing demo remains on
-system nodes, run `kubectl -n demo rollout restart deployment/demo` and wait for
-its rollout. Recreate other workshop application pods through their controllers
-as needed; do not delete unfamiliar system pods or add broad tolerations.
 
 </details>
 
@@ -283,8 +241,8 @@ dependency in any order.
 
 ## 7. Upgrade the cluster without recreating it
 
-Start with an **older supported minor**, not an end-of-life cluster. Check the
-actual running version and the upgrades offered to **this cluster**. The
+Start with the **supported version selected during setup**, not an end-of-life
+cluster. Check the actual running version and the upgrades offered to **this cluster**. The
 regional version list alone does not prove that a particular upgrade is valid.
 
 <details>
@@ -304,8 +262,10 @@ kubectl -n demo get pods -o wide
 
 Choose the next supported minor version from `get-upgrades`. If AKS requires a
 patch update first, perform that update and check again. **Do not skip minor
-versions or attempt a downgrade.** If no newer minor is offered, consult the
-instructor's regional version choice; do not bypass validation.
+versions or attempt a downgrade.** If no newer minor is offered, use a newer
+supported patch in the same minor for this exercise. If no newer supported
+version is offered, stop and consult the instructor; do not bypass validation
+or recreate the cluster to complete the upgrade.
 
 Two replicas reduce interruption risk but do not guarantee availability. Check
 whether they are on different nodes. The workload has readiness probes but no
@@ -361,6 +321,8 @@ You can connect to the cluster with `kubectl`, verify that all four nodes are
 `Ready`, explain the two subnets and Service range, and confirm the demo runs on
 `apps` while system nodes are tainted. You can verify an in-place upgrade of the
 control plane **and both node pools**. Keep the state and upgraded cluster.
+Explain why the workload changes made with `kubectl` do not appear in the
+Terraform plan.
 
 ## Troubleshooting
 

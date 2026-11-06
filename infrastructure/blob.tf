@@ -10,10 +10,9 @@ resource "azurerm_storage_account" "blob" {
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = false
 
-  # Lab-only exemption from the subscription's public-network restriction.
-  tags = {
+  tags = var.allow_storage_policy_exemption ? {
     SecurityControl = "Ignore"
-  }
+  } : {}
 }
 
 resource "azurerm_storage_container" "labdata" {

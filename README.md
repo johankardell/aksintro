@@ -5,6 +5,12 @@ small cluster in the Azure portal, then build a reusable environment with
 Terraform, Application Gateway for Containers, identities, storage, GitOps, and
 managed monitoring.
 
+The through-line is **how an AKS workload is exposed, authorized, persisted,
+reconciled, and observed**. Labs 1-3 follow the same small web demo from a
+public Service to an Azure-managed Gateway. Later labs use separate, deliberately
+small workloads to isolate identity, disk, GitOps, and telemetry concepts; they
+share the cluster, not one application lifecycle.
+
 **These labs create billable Azure resources.** Use a sandbox subscription, not a
 production cluster. Free AKS control-plane pricing does not make the worker
 nodes, disks, networking, Application Gateway for Containers, or monitoring free.
@@ -23,7 +29,11 @@ Complete [Setup and prerequisites](docs/00-setup.md) before starting.
 | [6. Managed Argo CD and Entra ID](labs/06-gitops/README.md) | Sign in with Entra ID, deploy from Git, and reconcile changes and drift | 90-120 minutes |
 | [7. Managed monitoring](labs/07-monitoring/README.md) | Investigate Container Insights logs, query managed Prometheus, and use Azure Managed Grafana | 60-90 minutes |
 
-Allow additional time for tool installation, permissions, and discussion.
+The seven labs total about **7-9¾ hours**, excluding setup, breaks, permission
+delays, discussion, and cleanup. Plan this as a multi-session workshop; a
+reasonable split is Labs 1-3, then Labs 4-7. Complete the setup guide before
+the first session and reserve time for final cleanup.
+
 Exercises have **collapsed solution blocks**. Try the task first, then expand
 the solution for commands and explanations. Run the commands in order; the
 solutions are also the worked path through each lab.
@@ -72,16 +82,41 @@ and built-in dashboards. Its paid monitoring resources are not created in
 earlier labs. Grafana uses its built-in Entra authentication, independent of
 the Argo CD app registration.
 
-Lab 2 intentionally starts on an **older, still-supported Kubernetes minor
-version**, chosen from the live regional version list. Attendees upgrade the
-control plane and both node pools through Terraform before Lab 3. No obsolete version
-is hard-coded, and no unsupported-version or paid LTS exception is required.
+The examples after Lab 3 are separate on purpose:
+
+| Lab | Why it uses a separate workload |
+| --- | --- |
+| 4 | A minimal CLI pod makes the Workload Identity token exchange and read-only Blob authorization visible without an application SDK. |
+| 5 | A single web pod makes the PVC-to-PV-to-disk relationship and data survival easy to observe. |
+| 6 | A fresh `gitops-demo` namespace lets Argo CD own its application without adopting or pruning the earlier demo or disk workload. |
+| 7 | A small log-emitting workload makes telemetry searchable and keeps the exercise's log volume controlled. |
+
+Lab 7 also revisits the earlier namespaces in cluster dashboards so monitoring
+connects back to the environment built in Labs 2-6.
+
+Lab 2 intentionally starts on a **still-supported Kubernetes version with an
+available upgrade**, chosen from the live regional version list. For Labs 1-2, prefer
+**1.35.1** if still available with standard support in **Sweden Central
+(`swedencentral`)**; otherwise choose the oldest available supported patch at
+or above **1.35**, excluding previews and LTS-only releases. Confirm a newer
+supported upgrade is available before Lab 2. Attendees upgrade the control
+plane and both node pools through Terraform before Lab 3, preferably to the
+next minor or to a newer patch if no next minor is offered.
+
+## Workshop wrap-up
+
+Before cleanup, trace a request from the browser through the Gateway, route,
+Service, and pod. Then explain which layer owns the cluster, Azure resources,
+Kubernetes workloads, GitOps desired state, and monitoring collection. Finally,
+explain why the disk, GitOps application, and AGC controller must be removed in
+the order shown in [Final cleanup](docs/cleanup.md).
 
 ## Repository map
 
 | Path | Purpose |
 | --- | --- |
 | `docs/00-setup.md` | Installation, login, permissions, terminology, and resuming work |
+| `docs/instructor-guide.md` | Delivery plan and live-integration smoke checks for a fresh workshop environment |
 | `infrastructure/` | Shared cluster/network and optional Azure resources for Labs 3, 4, 6, and 7 |
 | `apps/demo/manifest.yaml` | Small HTTP demo for Labs 1-3 and the GitOps source for Lab 6 |
 | `apps/persistent-demo/manifest.yaml` | Web application and Azure Disk claim for Lab 5 |
@@ -114,6 +149,13 @@ in Lab 6 is distinct from Entra authentication to the **Kubernetes API**.
 
 When finished, follow [Final cleanup](docs/cleanup.md). Closing your terminal or
 deleting a Kubernetes Deployment does not stop Azure billing.
+
+## Repository checks
+
+The GitHub Actions validation checks local Markdown links and heading anchors,
+balanced solution blocks, Bash code-block syntax, key cross-file workload
+boundaries, and the mocked Terraform configuration. These checks do not contact
+Azure or prove that live services are available in a particular region.
 
 ## Checking the Terraform solution
 

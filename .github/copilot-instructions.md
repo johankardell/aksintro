@@ -6,11 +6,16 @@ This is a Markdown-first, beginner AKS workshop with seven sequential labs.
 `README.md` defines the learning path; `docs/00-setup.md` prepares attendees,
 and `docs/cleanup.md` defines the dependency-sensitive teardown.
 
-Lab 1 uses a disposable portal-created cluster. Labs 2-7 share one
-Terraform-managed cluster, VNet, and local state. Lab 2 deliberately starts on
-an older **still-supported**, regionally available Kubernetes patch and upgrades
-the control plane and both node pools through Terraform. Do not hard-code an expiring
-Kubernetes release or replace the cluster between labs.
+Each workshop starts from zero; do not add migration or import instructions
+for earlier workshop environments. Lab 1 uses a disposable portal-created
+cluster. Labs 2-7 share one new Terraform-managed cluster, VNet, and local
+state. For Labs 1-2, prefer Kubernetes **1.35.1** if still available with
+standard support in **Sweden Central (`swedencentral`)**; otherwise select the
+oldest available supported patch at or above **1.35**, excluding previews and
+LTS-only releases. Check live regional availability and a newer supported
+upgrade. Lab 2 upgrades the control plane and both node pools through
+Terraform, preferably to the next minor or to a newer patch if no next minor
+is offered. Do not replace the cluster between labs.
 
 `infrastructure/` is one Terraform root configuration, split by concern.
 It uses AzureRM `~> 4.81`; resource-provider auto-registration is disabled
@@ -37,11 +42,17 @@ Run from the repository root. Configuration supports Terraform >=1.6,<2.0;
 mock-provider tests require **1.7+**.
 
 ```bash
+python .github/scripts/check_repo.py
 terraform -chdir=infrastructure init -backend=false
 terraform -chdir=infrastructure fmt -check -recursive
 terraform -chdir=infrastructure validate
 terraform -chdir=infrastructure test
 ```
+
+The repository check validates local Markdown links and heading anchors,
+balanced solution blocks, Bash examples, and selected cross-file workload
+invariants. It needs Python 3 and Bash; it does not validate live Azure
+availability or Kubernetes manifest schemas.
 
 To select a test file:
 

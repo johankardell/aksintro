@@ -201,8 +201,9 @@ mkdir -p .workshop
 
 Choose a short, unique lowercase lab ID: for example `jk01`. The Terraform
 prefix `aksintro-jk01` must be at most 15 characters, so keep your lab ID to
-**2-6 lowercase letters or digits**. The example region is North Europe;
-the instructor should confirm AKS, AGC, Azure Monitor workspace, Log Analytics,
+**2-6 lowercase letters or digits**. Use the example region and VM size from
+[`infrastructure/terraform.tfvars.example`](../infrastructure/terraform.tfvars.example).
+The instructor should confirm AKS, AGC, Azure Monitor workspace, Log Analytics,
 and Managed Grafana availability, VM capacity, and quota in the chosen region
 before the workshop.
 
@@ -213,7 +214,8 @@ cat > .workshop/env.sh <<EOF
 export WORKSHOP_ROOT="$PWD"
 export SUBSCRIPTION_ID="YOUR-SUBSCRIPTION-ID"
 export LAB_ID="jk01"
-export LOCATION="northeurope"
+export LOCATION="swedencentral"
+export NODE_VM_SIZE="Standard_D4as_v7"
 export GITHUB_USERNAME="YOUR-GITHUB-USERNAME"
 EOF
 source .workshop/env.sh
@@ -293,37 +295,64 @@ or you switched machines.
 Check availability:
 
 ```bash
-az aks get-versions --location "$LOCATION" --output table
+az aks get-versions --location "$LOCATION" --output json
 az vm list-usage --location "$LOCATION" --output table
 az vm list-skus --location "$LOCATION" \
-  --resource-type virtualMachines --size Standard_D4s_v5 --output table
+  --resource-type virtualMachines --size "$NODE_VM_SIZE" --output table
 ```
 
-For **Lab 2's upgrade exercise**, the instructor should select a generally
-available Kubernetes minor version one minor behind a newer supported version
-in this region. Choose an explicit patch version, not a preview or an
-unsupported/LTS-only release. Save it locally:
+The checked-in example currently uses `Standard_D4as_v7` in `swedencentral`.
+These are examples, not guarantees of capacity or availability. If the
+instructor selects another region or size, update `LOCATION` and
+`NODE_VM_SIZE` in `.workshop/env.sh` before continuing.
+
+For **Labs 1 and 2**, the recommended starting Kubernetes version is
+**1.35.1**, if it is still available with standard support in
+**Sweden Central (`swedencentral`)**. If not, choose the **oldest available
+supported patch version at or above 1.35** (minimum `1.35.0`), not the portal's
+newest/default version. If using another agreed region, apply the same rule
+to that region's live list.
+
+In the JSON returned by `get-versions`, inspect `values[].patchVersions` for
+the exact patches. Use only non-preview entries whose
+`capabilities.supportPlan` includes `KubernetesOfficial`; exclude LTS-only
+entries. For the selected patch, inspect its `upgrades` list and confirm that
+a newer supported version is available for Lab 2's upgrade exercise. Prefer
+the next minor; a newer patch in the same minor also provides an upgrade
+exercise if no next minor is offered. If no eligible starting version or
+newer supported upgrade is available, ask the instructor before creating
+Lab 2; do not use an unsupported version or skip the upgrade.
+
+Save the selected version locally. Use `1.35.1` below only after confirming it
+in the live list; otherwise replace it with the eligible fallback:
 
 ```bash
-export K8S_VERSION="REPLACE-WITH-OLDER-SUPPORTED-PATCH-VERSION"
+export K8S_VERSION="1.35.1"
 printf 'export K8S_VERSION="%s"\n' "$K8S_VERSION" >> .workshop/env.sh
 ```
 
-Replace the placeholder before running it. The instructor should confirm both
-the starting version and its next-minor upgrade path shortly before the class,
+The instructor should confirm both the starting version and its supported
+upgrade path shortly before the class,
 including compatibility with the Lab 3 controller and Lab 6 extension. AKS
 availability rolls out regionally; do not copy a stale version from an old
-workshop. Lab 1 can keep the portal's default version.
+workshop. Select this same starting version in the Lab 1 portal settings and
+Lab 2 Terraform inputs. Lab 1 is disposable; the upgrade happens on the new
+Terraform-managed cluster in Lab 2.
 
-Lab 2 requests **four `Standard_D4s_v5` nodes**: two in the `system` pool and two
-in the `apps` pool, for 16 vCPUs in total. Each pool allows one temporary upgrade
-node. Reserve quota and capacity for two surge nodes (eight more vCPUs), for
-**24 vCPUs including upgrade headroom**. Check both the regional vCPU quota and the
-VM-family quota. AKS system nodes require at least 4 vCPUs and 4 GiB of memory;
+Lab 2 requests **four nodes of the selected `NODE_VM_SIZE`**: two in the
+`system` pool and two in the `apps` pool. Each pool allows one temporary
+upgrade node, so reserve quota and capacity for **six nodes of that size**.
+For the example 4-vCPU size, that is 16 vCPUs for steady state and 24 vCPUs
+including the two surge nodes. Check both the regional vCPU quota and the VM
+family quota. AKS system nodes require at least 4 vCPUs and 4 GiB of memory;
 B-series VMs are not supported. See the
 [system node pool requirements](https://learn.microsoft.com/azure/aks/use-system-pools).
 Ask the instructor for an available compatible size if this SKU is restricted;
 do not repeatedly create clusters hoping to bypass a quota error.
+
+The setup, Lab 2, and Terraform example values should remain aligned. See the
+[instructor guide](instructor-guide.md) for a pre-workshop availability check
+and live-integration smoke-test checklist.
 
 Make a cost estimate with the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/).
 Include four worker VMs, OS disks, load balancer/public IP resources, AGC, a small
