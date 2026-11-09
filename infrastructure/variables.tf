@@ -94,6 +94,13 @@ variable "enable_argocd" {
   default     = false
 }
 
+variable "argocd_local_auth_enabled" {
+  description = "Lab 6 fallback only: enable the local Argo CD admin account instead of Entra SSO. Keep the UI localhost-only."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
 variable "argocd_sso_client_id" {
   description = "Client ID of the externally created single-tenant Entra application for Lab 6."
   type        = string

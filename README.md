@@ -29,6 +29,12 @@ Complete [Setup and prerequisites](docs/00-setup.md) before starting.
 | [6. Managed Argo CD and Entra ID](labs/06-gitops/README.md) | Sign in with Entra ID, deploy from Git, and reconcile changes and drift | 90-120 minutes |
 | [7. Managed monitoring](labs/07-monitoring/README.md) | Investigate Container Insights logs, query managed Prometheus, and use Azure Managed Grafana | 60-90 minutes |
 
+**Lab 6 alternative:** If you do not have permission to create app registrations
+in Microsoft Entra ID, use [Lab 6 fallback: local Argo CD login](labs/06-gitops-local/README.md)
+instead of the Entra version. It covers the same GitOps exercises using a local
+Argo CD account, without creating an Entra app registration or security group.
+Azure subscription roles do not automatically grant these Entra permissions.
+
 The seven labs total about **7-9¾ hours**, excluding setup, breaks, permission
 delays, discussion, and cleanup. Plan this as a multi-session workshop; a
 reasonable split is Labs 1-3, then Labs 4-7. Complete the setup guide before
@@ -136,7 +142,8 @@ This is a learning environment, not a production reference architecture:
 - Two Linux system nodes reserved for critical add-ons, two application nodes,
   and non-HA Argo CD.
 - HTTP for the public demo, containing no sensitive data.
-- Argo CD available only through a localhost port-forward, with Entra sign-in.
+- Argo CD available only through a localhost port-forward, with Entra sign-in
+  (or a local administrator account in the fallback Lab 6).
 - Terraform state stored locally; never commit it or lose it during the labs.
 - A public GitHub fork for GitOps, containing manifests but no credentials.
 - Default managed monitoring collection and Grafana Standard without optional

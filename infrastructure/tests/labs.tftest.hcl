@@ -287,6 +287,40 @@ run "argocd_extension_and_identity_separation" {
   }
 }
 
+run "argocd_local_auth_without_entra_objects" {
+  command = apply
+
+  variables {
+    enable_argocd             = true
+    argocd_local_auth_enabled = true
+  }
+
+  assert {
+    condition = (
+      azurerm_kubernetes_cluster_extension.argocd[0].extension_type == "Microsoft.ArgoCD" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["configs.cm.admin\\.enabled"] == "true" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["server.service.type"] == "ClusterIP" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["configs.params.server\\.insecure"] == "true" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["configs.cm.url"] == "http://localhost:8080" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["configs.rbac.policy\\.default"] == "role:no-access" &&
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["redis-ha.enabled"] == "false" &&
+      !contains(keys(azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings), "configs.cm.oidc\\.config") &&
+      !contains(keys(azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings), "azure.workloadIdentity.entraSSOClientId") &&
+      !contains(keys(azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings), "server.serviceAccount.annotations.azure\\.workload\\.identity/client-id") &&
+      !contains(keys(azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings), "configs.rbac.policy\\.csv")
+    )
+    error_message = "The opt-in fallback must allow local login without SSO settings, while retaining localhost-only access and no default permissions."
+  }
+
+  assert {
+    condition = (
+      azurerm_kubernetes_cluster_extension.argocd[0].configuration_settings["repoServer.serviceAccount.annotations.azure\\.workload\\.identity/client-id"] == output.argocd_managed_identity_client_id &&
+      azurerm_federated_identity_credential.argocd[0].subject == "system:serviceaccount:argocd:argocd-repo-server"
+    )
+    error_message = "Local UI authentication must not replace the separately managed repo-server identity or federation."
+  }
+}
+
 run "defender_does_not_enable_lab7_collection" {
   command = plan
 
